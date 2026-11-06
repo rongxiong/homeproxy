@@ -17,6 +17,8 @@ let outbound_node, tun_name;
 if (match(proxy_mode, /tun/)) {
 	if (routing_mode === 'custom')
 		outbound_node = uci.get(cfgname, 'routing', 'default_outbound') || 'nil';
+	else if (routing_mode === 'simple')
+		outbound_node = uci.get(cfgname, 'simple', 'default_outbound') || 'direct-out';
 	else
 		outbound_node = uci.get(cfgname, 'config', 'main_node') || 'nil';
 

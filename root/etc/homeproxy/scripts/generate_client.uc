@@ -41,6 +41,8 @@ const uciroutingsetting = 'routing',
 
 const ucinode = 'node';
 const uciruleset = 'ruleset';
+const ucisimple = 'simple',
+      ucisimplerule = 'simple_rule';
 
 const routing_mode = uci.get(uciconfig, ucimain, 'routing_mode') || 'bypass_mainland_china';
 
@@ -59,7 +61,10 @@ let main_node, main_udp_node, dedicated_udp_node, default_outbound, default_outb
     dns_disable_cache, dns_disable_cache_expire, dns_client_subnet,
     cache_file_store_rdrc, cache_file_rdrc_timeout, direct_domain_list, proxy_domain_list;
 
-if (routing_mode !== 'custom') {
+if (routing_mode === 'simple') {
+	/* Simple routing provides its own DNS, outbounds and route rules. */
+	dns_default_strategy = (ipv6_support !== '1') ? 'ipv4_only' : null;
+} else if (routing_mode !== 'custom') {
 	main_node = uci.get(uciconfig, ucimain, 'main_node') || 'nil';
 	main_udp_node = uci.get(uciconfig, ucimain, 'main_udp_node') || 'nil';
 	dedicated_udp_node = !isEmpty(main_udp_node) && !(main_udp_node in ['same', main_node]);
@@ -117,7 +122,7 @@ if (match(proxy_mode, /redirect/)) {
 	redirect_port = uci.get(uciconfig, 'infra', 'redirect_port') || '5331';
 }
 if (match(proxy_mode, /tproxy/))
-	if (main_udp_node !== 'nil' || routing_mode === 'custom')
+	if (main_udp_node !== 'nil' || routing_mode in ['custom', 'simple'])
 		tproxy_port = uci.get(uciconfig, 'infra', 'tproxy_port') || '5332';
 if (match(proxy_mode, /tun/)) {
 	tun_name = uci.get(uciconfig, uciinfra, 'tun_name') || 'singtun0';
@@ -391,6 +396,175 @@ function get_ruleset(cfg) {
 }
 /* Config helper end */
 
+/* Simple routing translation start */
+function simple_array(value) {
+	if (isEmpty(value))
+		return [];
+	return (type(value) === 'array') ? value : [ value ];
+}
+
+function simple_node_tag(name) {
+	return 'simple-n-' + name + '-out';
+}
+
+/* "geosite/netflix" -> <base>/geosite/netflix.srs, bare names default to geosite,
+ * and full URLs are used verbatim. */
+function simple_ruleset_url(base, value) {
+	if (match(value, /^https?:\/\//))
+		return value;
+
+	let category = 'geosite', name = value;
+	const parts = split(value, '/');
+	if (length(parts) === 2 && (parts[0] in ['geosite', 'geoip'])) {
+		category = parts[0];
+		name = parts[1];
+	}
+
+	return base + '/' + category + '/' + replace(name, '@', '%40') + '.srs';
+}
+
+function simple_track_node(ctx, name) {
+	if (isEmpty(name))
+		return null;
+
+	const node = uci.get_all(uciconfig, name) || {};
+	/* Silently drop dangling references, e.g. a node deleted on the node page. */
+	if (isEmpty(node.type))
+		return null;
+
+	ctx.node_cfgs[name] = node;
+	return name;
+}
+
+function simple_add_group(ctx, primary, fallbacks) {
+	let nodes = [ primary ];
+	for (let f in fallbacks)
+		if (f !== primary && !~index(nodes, f))
+			push(nodes, f);
+
+	/* Reuse a group when several rows share the same ordered node sequence. */
+	const signature = join(',', nodes);
+	if (ctx.group_tags[signature])
+		return ctx.group_tags[signature];
+
+	const tag = 'simple-grp-' + length(ctx.groups) + '-out';
+	ctx.group_tags[signature] = tag;
+	push(ctx.groups, { tag: tag, nodes: nodes });
+	return tag;
+}
+
+function simple_add_ruleset(ctx, base, value) {
+	if (isEmpty(value))
+		return null;
+
+	const url = simple_ruleset_url(base, value);
+	if (ctx.ruleset_tags[url])
+		return ctx.ruleset_tags[url];
+
+	const tag = 'simple-rs-' + length(ctx.rulesets) + '-rule';
+	ctx.ruleset_tags[url] = tag;
+	push(ctx.rulesets, { tag: tag, url: url });
+	return tag;
+}
+
+const simple = (routing_mode === 'simple') ? {
+	groups: [],
+	group_tags: {},
+	rulesets: [],
+	ruleset_tags: {},
+	node_cfgs: {},
+	rules: [],
+	final: 'direct-out',
+	aux_detour: null,
+	dns_server: null,
+	china_dns_server: null,
+	cn_ruleset_tag: null,
+	health_url: 'https://www.gstatic.com/generate_204',
+	health_interval: null,
+	update_interval: '1d'
+} : null;
+
+if (simple) {
+	const simple_cfg = uci.get_all(uciconfig, ucisimple) || {};
+	const base = replace(simple_cfg.ruleset_url_base ||
+		'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo', /\/$/, '');
+
+	simple.dns_server = simple_cfg.dns_server;
+	simple.china_dns_server = simple_cfg.china_dns_server;
+	simple.health_url = simple_cfg.health_check_url || 'https://www.gstatic.com/generate_204';
+	simple.health_interval = strToTime(simple_cfg.health_check_interval || '180');
+	simple.update_interval = simple_cfg.ruleset_update_interval || '1d';
+
+	uci.foreach(uciconfig, ucisimplerule, (rule) => {
+		if (rule.enabled !== '1')
+			return;
+
+		const primary = simple_track_node(simple, rule.node);
+		if (!primary)
+			return;
+
+		let fallbacks = [];
+		for (let f in simple_array(rule.fallback_nodes)) {
+			const fb = simple_track_node(simple, f);
+			if (fb)
+				push(fallbacks, fb);
+		}
+
+		let conditions = [];
+
+		for (let ident in simple_array(rule.rule_sets)) {
+			const tag = simple_add_ruleset(simple, base, ident);
+			if (tag)
+				push(conditions, { rule_set: tag });
+		}
+		for (let value in simple_array(rule.rule_set_urls)) {
+			const tag = simple_add_ruleset(simple, base, value);
+			if (tag)
+				push(conditions, { rule_set: tag });
+		}
+
+		const domains = simple_array(rule.domains);
+		if (length(domains)) {
+			/* Distinct sub-rules: fields inside one route rule are ANDed. */
+			push(conditions, { domain: domains });
+			push(conditions, { domain_suffix: domains });
+		}
+
+		const ip_cidrs = simple_array(rule.ip_cidrs);
+		if (length(ip_cidrs))
+			push(conditions, { ip_cidr: ip_cidrs });
+
+		/* A logical "or" rule is required: fields inside a plain route rule
+		 * are combined with AND, which would almost never match. */
+		if (length(conditions)) {
+			const group = simple_add_group(simple, primary, fallbacks);
+			push(simple.rules, { group: group, conditions: conditions });
+		}
+	});
+
+	/* Outbound for traffic not matched by any row. */
+	const final_node = simple_cfg.default_outbound || 'direct-out';
+	if (final_node in ['direct-out', 'block-out'])
+		simple.final = final_node;
+	else if (simple_track_node(simple, final_node))
+		simple.final = simple_node_tag(final_node);
+
+	/* Rule set downloads and the remote DNS server share one auxiliary node. */
+	const aux_node = simple_cfg.ruleset_download_detour;
+	if (simple_track_node(simple, aux_node))
+		simple.aux_detour = simple_node_tag(aux_node);
+	else if (length(simple.groups))
+		simple.aux_detour = simple.groups[0].tag;
+	else if (length(keys(simple.node_cfgs)))
+		simple.aux_detour = simple_node_tag(keys(simple.node_cfgs)[0]);
+
+	/* DNS splitting needs the CN domain rule set even when no row uses it.
+	 * simple_add_ruleset() de-duplicates it against routing rows by URL. */
+	if (!isEmpty(simple.china_dns_server) && simple.china_dns_server !== 'nil')
+		simple.cn_ruleset_tag = simple_add_ruleset(simple, base, 'geosite/geolocation-cn');
+}
+/* Simple routing translation end */
+
 const config = {};
 
 /* Log */
@@ -581,6 +755,46 @@ if (!isEmpty(main_node)) {
 		config.dns.rules = null;
 
 	config.dns.final = get_resolver(dns_default_server);
+} else if (simple) {
+	/* Resolve remote domains through a proxy node when one is available. */
+	if (simple.aux_detour) {
+		let simple_dns_addr = simple.dns_server;
+		if (isEmpty(simple_dns_addr) || simple_dns_addr === 'wan')
+			simple_dns_addr = wan_dns;
+
+		push(config.dns.servers, {
+			tag: 'simple-dns',
+			domain_resolver: {
+				server: 'default-dns',
+				strategy: (ipv6_support !== '1') ? 'ipv4_only' : null
+			},
+			detour: simple.aux_detour,
+			...parse_dnsserver(simple_dns_addr, 'tcp')
+		});
+		config.dns.final = 'simple-dns';
+	} else {
+		config.dns.final = 'default-dns';
+	}
+
+	/* Domestic domains use a direct DNS server so Chinese sites keep their
+	 * local CDN addresses; everything else still uses the remote DNS. */
+	if (simple.cn_ruleset_tag) {
+		let china_dns_addr = simple.china_dns_server;
+		if (china_dns_addr === 'wan')
+			china_dns_addr = wan_dns;
+
+		push(config.dns.servers, {
+			tag: 'china-dns',
+			domain_resolver: { server: 'default-dns' },
+			detour: self_mark ? 'direct-out' : null,
+			...parse_dnsserver(china_dns_addr)
+		});
+		push(config.dns.rules, {
+			rule_set: simple.cn_ruleset_tag,
+			action: 'route',
+			server: 'china-dns'
+		});
+	}
 }
 /* DNS end */
 
@@ -768,6 +982,38 @@ if (!isEmpty(main_node)) {
 		else
 			push(config.outbounds, generate_outbound(urltest_node));
 	}
+} else if (simple) {
+	/* One outbound per referenced node, shared by all groups using it. */
+	for (let name in keys(simple.node_cfgs)) {
+		const node = simple.node_cfgs[name];
+		if (node.type === 'wireguard') {
+			const endpoint = generate_endpoint(node);
+			endpoint.tag = simple_node_tag(name);
+			endpoint.domain_resolver = { server: 'default-dns' };
+			push(config.endpoints, endpoint);
+		} else {
+			const outbound = generate_outbound(node);
+			outbound.tag = simple_node_tag(name);
+			outbound.domain_resolver = { server: 'default-dns' };
+			push(config.outbounds, outbound);
+		}
+	}
+
+	/* Outbound order is the failover priority: sing-box keeps the selected
+	 * node unless a candidate beats it by more than "tolerance" ms, and falls
+	 * through to the next available node when the selected one fails. */
+	for (let g in simple.groups) {
+		push(config.outbounds, {
+			type: 'urltest',
+			tag: g.tag,
+			outbounds: map(g.nodes, (n) => simple_node_tag(n)),
+			url: simple.health_url,
+			interval: simple.health_interval,
+			/* Keep well below 65535: sing-box adds this to a uint16 delay. */
+			tolerance: 30000,
+			interrupt_exist_connections: true
+		});
+	}
 }
 
 if (isEmpty(config.endpoints))
@@ -938,11 +1184,41 @@ if (!isEmpty(main_node)) {
 			update_interval: cfg.update_interval
 		});
 	});
+} else if (simple) {
+	config.route.default_domain_resolver = {
+		action: 'route',
+		server: 'default-dns',
+		strategy: (ipv6_support !== '1') ? 'prefer_ipv4' : null
+	};
+
+	for (let r in simple.rules)
+		push(config.route.rules, {
+			type: 'logical',
+			mode: 'or',
+			rules: r.conditions,
+			action: 'route',
+			outbound: r.group
+		});
+
+	config.route.final = simple.final;
+
+	for (let rs in simple.rulesets)
+		push(config.route.rule_set, {
+			type: 'remote',
+			tag: rs.tag,
+			format: 'binary',
+			url: rs.url,
+			download_detour: simple.aux_detour,
+			update_interval: simple.update_interval
+		});
+
+	if (isEmpty(config.route.rule_set))
+		config.route.rule_set = null;
 }
 /* Routing rules end */
 
 /* Experimental start */
-if (routing_mode in ['bypass_mainland_china', 'custom']) {
+if (routing_mode in ['bypass_mainland_china', 'custom', 'simple']) {
 	config.experimental = {
 		cache_file: {
 			enabled: true,

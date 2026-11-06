@@ -396,7 +396,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	s.modaltitle = L.bind(hp.loadModalTitle, this, _('Node'), _('Add a node'), data[0]);
 	s.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
 
-	if (routing_mode !== 'custom') {
+	if (!['custom', 'simple'].includes(routing_mode)) {
 		o = s.option(form.Button, '_apply', _('Apply'));
 		o.editable = true;
 		o.modalonly = false;

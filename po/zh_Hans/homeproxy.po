@@ -3101,3 +3101,131 @@ msgstr "有效端口值"
 #: htdocs/luci-static/resources/homeproxy.js:328
 msgid "valid uuid"
 msgstr "有效 uuid"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set."
+msgstr "可填写完整的 .srs URL，或 geosite/netflix 这样的标识。只填名称时默认按 geosite 规则集处理。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Base URL used to resolve built-in rule set names from MetaCubeX/meta-rules-dat."
+msgstr "用于解析 MetaCubeX/meta-rules-dat 内置规则集名称的下载地址前缀。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Built-in rule sets"
+msgstr "内置规则集"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom IPv4 / IPv6 addresses or CIDR ranges."
+msgstr "自定义 IPv4 / IPv6 地址或 CIDR 网段。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom domains. Subdomains are matched automatically."
+msgstr "自定义域名，自动匹配子域名。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom rule sets"
+msgstr "自定义规则集"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Download / DNS node"
+msgstr "下载 / DNS 节点"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Fallback nodes"
+msgstr "备用节点"
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "GitHub raw"
+msgstr "GitHub raw"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Health check URL"
+msgstr "健康检查地址"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Health check interval"
+msgstr "健康检查间隔"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "How often remote rule sets are refreshed, e.g. 1d."
+msgstr "远程规则集的刷新周期，例如 1d。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "IP / CIDR"
+msgstr "IP / CIDR"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "In seconds. A failed primary node is re-evaluated on the next check; failback is therefore not instantaneous."
+msgstr "单位为秒。故障主节点会在下一次检查时重新评估，因此不会立即切回。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Node used to download rule sets and to reach the remote DNS server. Leave empty for a direct connection."
+msgstr "用于下载规则集和访问远程 DNS 服务器的节点。留空则直连。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Ordered fallback nodes. The next one is used only when the previous one fails the health check."
+msgstr "按先后顺序排列的备用节点。只有前一个节点健康检查失败时才会使用下一个。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Outbound for traffic not matched by any routing rule below."
+msgstr "未被下方任何分流规则匹配的流量所使用的出站。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Remote DNS server used through a proxy node. Support UDP, TCP, DoH, DoQ, DoT."
+msgstr "通过代理节点访问的远程 DNS 服务器，支持 UDP、TCP、DoH、DoQ、DoT。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule set URL base"
+msgstr "规则集地址前缀"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule set update interval"
+msgstr "规则集更新间隔"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule sets from MetaCubeX/meta-rules-dat (sing/geo). Select several to route them all through the same node."
+msgstr "来自 MetaCubeX/meta-rules-dat (sing/geo) 的规则集。可多选，让多个规则集共用同一个节点。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Simple Routing"
+msgstr "简洁分流"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Simple routing"
+msgstr "简洁分流"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "The primary node for this rule."
+msgstr "该规则的主节点。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "The selected node does not exist."
+msgstr "所选节点不存在。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Used to test node availability. The first available node in the configured order is used; a failed node is skipped until it passes a later check."
+msgstr "用于检测节点可用性。按配置顺序使用第一个可用节点；故障节点会被跳过，直到后续检测通过。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a value between 10 and 1800"
+msgstr "10 到 1800 之间的数值"
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "jsDelivr CDN"
+msgstr "jsDelivr CDN"
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "jsDelivr CDN (Fastly)"
+msgstr "jsDelivr CDN（Fastly）"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "valid URL or rule set name"
+msgstr "有效的 URL 或规则集名称"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Add"
+msgstr "添加"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Domestic domains are resolved by this server over a direct connection. Set to Disable to use the DNS server above for all domains."
+msgstr "国内域名将由该服务器直连解析。设为「禁用」则所有域名都使用上方的 DNS 服务器。"

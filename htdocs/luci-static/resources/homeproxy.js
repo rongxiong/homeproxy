@@ -21,6 +21,60 @@ return baseclass.extend({
 		'ipv6_only': _('IPv6 only')
 	},
 
+	/* Curated rule sets from MetaCubeX/meta-rules-dat@sing/geo.
+	 * Keys are "<category>/<name>" identifiers, expanded to download URLs
+	 * by generate_client.uc. Names are proper nouns and need no translation. */
+	simple_rule_sets: {
+		'geosite/geolocation-cn': 'GeoSite · geolocation-cn (China)',
+		'geosite/geolocation-!cn': 'GeoSite · geolocation-!cn (non-China)',
+		'geosite/gfw': 'GeoSite · gfw',
+		'geosite/private': 'GeoSite · private (LAN)',
+		'geosite/category-ads-all': 'GeoSite · category-ads-all',
+		'geosite/category-ai-!cn': 'GeoSite · category-ai-!cn',
+		'geosite/category-dev': 'GeoSite · category-dev',
+		'geosite/category-games': 'GeoSite · category-games',
+		'geosite/category-media': 'GeoSite · category-media',
+		'geosite/category-scholar-!cn': 'GeoSite · category-scholar-!cn',
+		'geosite/category-social-media-!cn': 'GeoSite · category-social-media-!cn',
+		'geosite/openai': 'GeoSite · openai',
+		'geosite/google': 'GeoSite · google',
+		'geosite/youtube': 'GeoSite · youtube',
+		'geosite/github': 'GeoSite · github',
+		'geosite/telegram': 'GeoSite · telegram',
+		'geosite/twitter': 'GeoSite · twitter',
+		'geosite/facebook': 'GeoSite · facebook',
+		'geosite/instagram': 'GeoSite · instagram',
+		'geosite/apple': 'GeoSite · apple',
+		'geosite/microsoft': 'GeoSite · microsoft',
+		'geosite/netflix': 'GeoSite · netflix',
+		'geosite/disney': 'GeoSite · disney',
+		'geosite/spotify': 'GeoSite · spotify',
+		'geosite/bilibili': 'GeoSite · bilibili',
+		'geosite/steam': 'GeoSite · steam',
+		'geosite/tiktok': 'GeoSite · tiktok',
+		'geosite/discord': 'GeoSite · discord',
+		'geosite/reddit': 'GeoSite · reddit',
+		'geoip/cn': 'GeoIP · cn (China)',
+		'geoip/private': 'GeoIP · private (LAN)',
+		'geoip/cloudflare': 'GeoIP · cloudflare',
+		'geoip/us': 'GeoIP · us',
+		'geoip/jp': 'GeoIP · jp',
+		'geoip/hk': 'GeoIP · hk',
+		'geoip/tw': 'GeoIP · tw',
+		'geoip/sg': 'GeoIP · sg',
+		'geoip/kr': 'GeoIP · kr',
+		'geoip/gb': 'GeoIP · gb',
+		'geoip/de': 'GeoIP · de',
+		'geoip/ru': 'GeoIP · ru'
+	},
+
+	/* Base URLs the "category/name" identifiers above are appended to. */
+	simple_ruleset_url_bases: {
+		'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo': _('jsDelivr CDN (Fastly)'),
+		'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo': _('jsDelivr CDN'),
+		'https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo': _('GitHub raw')
+	},
+
 	shadowsocks_encrypt_length: {
 		/* AEAD */
 		'aes-128-gcm': 0,

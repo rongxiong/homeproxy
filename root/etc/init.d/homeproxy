@@ -35,10 +35,12 @@ start_service() {
 	config_get proxy_mode "config" "proxy_mode" "redirect_tproxy"
 
 	local outbound_node
-	if [ "$routing_mode" != "custom" ]; then
-		config_get outbound_node "config" "main_node" "nil"
-	else
+	if [ "$routing_mode" = "custom" ]; then
 		config_get outbound_node "routing" "default_outbound" "nil"
+	elif [ "$routing_mode" = "simple" ]; then
+		config_get outbound_node "simple" "default_outbound" "direct-out"
+	else
+		config_get outbound_node "config" "main_node" "nil"
 	fi
 
 	local server_enabled
@@ -79,7 +81,7 @@ start_service() {
 		mkdir -p "$DNSMASQ_DIR"
 		echo -e "conf-dir=$DNSMASQ_DIR" > "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf"
 		case "$routing_mode" in
-		"bypass_mainland_china"|"custom"|"global")
+		"bypass_mainland_china"|"custom"|"simple"|"global")
 			cat <<-EOF >> "$DNSMASQ_DIR/redirect-dns.conf"
 				no-poll
 				no-resolv
@@ -98,7 +100,7 @@ start_service() {
 			;;
 		esac
 
-		if [ "$routing_mode" != "custom" ] && [ -s "$HP_DIR/resources/proxy_list.txt" ]; then
+		if [ "$routing_mode" != "custom" ] && [ "$routing_mode" != "simple" ] && [ -s "$HP_DIR/resources/proxy_list.txt" ]; then
 			local wan_nftset_v6
 			[ "$ipv6_support" -eq "0" ] || wan_nftset_v6=",6#inet#fw4#homeproxy_wan_proxy_addr_v6"
 			sed -r -e '/^\s*$/d' -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_wan_proxy_addr_v4$wan_nftset_v6/g" \
@@ -113,7 +115,7 @@ start_service() {
 		"redirect_tproxy")
 			local outbound_udp_node
 			config_get outbound_udp_node "config" "main_udp_node" "nil"
-			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ]; then
+			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ] || [ "$routing_mode" = "simple" ]; then
 				local tproxy_mark
 				config_get tproxy_mark "infra" "tproxy_mark" "101"
 
@@ -152,7 +154,7 @@ start_service() {
 		# QUIC-GO GSO is broken on kernel 6.6 currently
 		uname -r | grep -Eq "^6\.6" && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
 
-		if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
+		if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && [ "$routing_mode" != "simple" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
 			procd_add_jail "sing-box-c" log procfs
 			procd_add_jail_mount "$RUN_DIR/sing-box-c.json"
 			procd_add_jail_mount_rw "$RUN_DIR/sing-box-c.log"
@@ -226,7 +228,7 @@ start_service() {
 	procd_close_instance
 
 	case "$routing_mode" in
-	"bypass_mainland_china")
+	"bypass_mainland_china"|"simple")
 		# Prepare cache db
 		[ -e "$RUN_DIR/cache.db" ] || touch "$RUN_DIR/cache.db"
 		;;

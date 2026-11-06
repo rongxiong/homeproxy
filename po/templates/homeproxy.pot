@@ -3031,3 +3031,131 @@ msgstr ""
 #: htdocs/luci-static/resources/homeproxy.js:328
 msgid "valid uuid"
 msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Base URL used to resolve built-in rule set names from MetaCubeX/meta-rules-dat."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Built-in rule sets"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom IPv4 / IPv6 addresses or CIDR ranges."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom domains. Subdomains are matched automatically."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Custom rule sets"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Download / DNS node"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Fallback nodes"
+msgstr ""
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "GitHub raw"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Health check URL"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Health check interval"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "How often remote rule sets are refreshed, e.g. 1d."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "IP / CIDR"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "In seconds. A failed primary node is re-evaluated on the next check; failback is therefore not instantaneous."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Node used to download rule sets and to reach the remote DNS server. Leave empty for a direct connection."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Ordered fallback nodes. The next one is used only when the previous one fails the health check."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Outbound for traffic not matched by any routing rule below."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Remote DNS server used through a proxy node. Support UDP, TCP, DoH, DoQ, DoT."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule set URL base"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule set update interval"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Rule sets from MetaCubeX/meta-rules-dat (sing/geo). Select several to route them all through the same node."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Simple Routing"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Simple routing"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "The primary node for this rule."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "The selected node does not exist."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Used to test node availability. The first available node in the configured order is used; a failed node is skipped until it passes a later check."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a value between 10 and 1800"
+msgstr ""
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "jsDelivr CDN"
+msgstr ""
+
+#: htdocs/luci-static/resources/homeproxy.js
+msgid "jsDelivr CDN (Fastly)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "valid URL or rule set name"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Add"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Domestic domains are resolved by this server over a direct connection. Set to Disable to use the DNS server above for all domains."
+msgstr ""
