@@ -58,10 +58,7 @@ config homeproxy 'routing'
 config homeproxy 'simple'
 	option default_outbound 'direct-out'
 	option dns_server '8.8.8.8'
-<<<<<<< HEAD
 	option china_dns_server '223.5.5.5'
-=======
->>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
 	option health_check_url 'https://www.gstatic.com/generate_204'
 	option health_check_interval '180'
 	option ruleset_url_base 'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo'

@@ -3151,7 +3151,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "valid URL or rule set name"
 msgstr ""
-<<<<<<< HEAD
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Add"
@@ -3160,5 +3159,3 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Domestic domains are resolved by this server over a direct connection. Set to Disable to use the DNS server above for all domains."
 msgstr ""
-=======
->>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
