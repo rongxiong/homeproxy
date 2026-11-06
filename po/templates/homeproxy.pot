@@ -3089,7 +3089,7 @@ msgid "In seconds. A failed primary node is re-evaluated on the next check; fail
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Node used to download rule sets and to reach the remote DNS server. Leave empty for a direct connection."
+msgid "Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; select Direct to bypass the proxy."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
@@ -3129,7 +3129,7 @@ msgid "The primary node for this rule."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "The selected node does not exist."
+msgid "Automatic"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js

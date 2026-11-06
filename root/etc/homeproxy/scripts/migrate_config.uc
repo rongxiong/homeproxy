@@ -281,7 +281,8 @@ const simple_defaults = {
 	china_dns_server: '223.5.5.5',
 	health_check_url: 'https://www.gstatic.com/generate_204',
 	health_check_interval: '180',
-	ruleset_url_base: 'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo',
+	ruleset_url_base: 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo',
+	ruleset_download_detour: '',
 	ruleset_update_interval: '1d'
 };
 for (let option in simple_defaults)

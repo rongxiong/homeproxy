@@ -70,8 +70,8 @@ return baseclass.extend({
 
 	/* Base URLs the "category/name" identifiers above are appended to. */
 	simple_ruleset_url_bases: {
-		'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo': _('jsDelivr CDN (Fastly)'),
 		'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo': _('jsDelivr CDN'),
+		'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo': _('jsDelivr CDN (Fastly)'),
 		'https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo': _('GitHub raw')
 	},
 

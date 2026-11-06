@@ -420,7 +420,7 @@ function simple_ruleset_url(base, value) {
 		name = parts[1];
 	}
 
-	return base + '/' + category + '/' + replace(name, '@', '%40') + '.srs';
+	return base + '/' + category + '/' + replace(name, /@/g, '%40') + '.srs';
 }
 
 function simple_track_node(ctx, name) {
@@ -487,7 +487,7 @@ const simple = (routing_mode === 'simple') ? {
 if (simple) {
 	const simple_cfg = uci.get_all(uciconfig, ucisimple) || {};
 	const base = replace(simple_cfg.ruleset_url_base ||
-		'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo', /\/$/, '');
+		'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo', /\/+$/, '');
 
 	simple.dns_server = simple_cfg.dns_server;
 	simple.china_dns_server = simple_cfg.china_dns_server;
@@ -549,18 +549,22 @@ if (simple) {
 	else if (simple_track_node(simple, final_node))
 		simple.final = simple_node_tag(final_node);
 
-	/* Rule set downloads and the remote DNS server share one auxiliary node. */
+	/* Rule set downloads and the remote DNS server share one auxiliary node.
+	 * Empty means "reuse the first routing group", direct-out forces a
+	 * direct connection with no remote DNS server at all. */
 	const aux_node = simple_cfg.ruleset_download_detour;
-	if (simple_track_node(simple, aux_node))
+	if (aux_node === 'direct-out')
+		simple.aux_detour = null;
+	else if (simple_track_node(simple, aux_node))
 		simple.aux_detour = simple_node_tag(aux_node);
 	else if (length(simple.groups))
 		simple.aux_detour = simple.groups[0].tag;
 	else if (length(keys(simple.node_cfgs)))
 		simple.aux_detour = simple_node_tag(keys(simple.node_cfgs)[0]);
 
-	/* DNS splitting needs the CN domain rule set even when no row uses it.
-	 * simple_add_ruleset() de-duplicates it against routing rows by URL. */
-	if (!isEmpty(simple.china_dns_server) && simple.china_dns_server !== 'nil')
+	/* Without any usable proxy there is no remote DNS to split from, so skip
+	 * the CN rule set entirely instead of downloading it for nothing. */
+	if (simple.aux_detour && !isEmpty(simple.china_dns_server) && simple.china_dns_server !== 'nil')
 		simple.cn_ruleset_tag = simple_add_ruleset(simple, base, 'geosite/geolocation-cn');
 }
 /* Simple routing translation end */
@@ -795,6 +799,9 @@ if (!isEmpty(main_node)) {
 			server: 'china-dns'
 		});
 	}
+
+	if (isEmpty(config.dns.rules))
+		config.dns.rules = null;
 }
 /* DNS end */
 

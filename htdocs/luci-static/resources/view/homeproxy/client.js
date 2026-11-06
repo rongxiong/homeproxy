@@ -85,6 +85,25 @@ function isValidHttpURL(value) {
 	}
 }
 
+/* DNS servers may be a bare IP or any protocol URL supported by sing-box
+ * (udp/tcp/tls/quic/https), so do not restrict the scheme to http(s). */
+function isValidDNSServer(value) {
+	if (!value)
+		return false;
+	if (['wan', 'nil'].includes(value))
+		return true;
+	if (stubValidator.apply('ipaddr', value))
+		return true;
+
+	try {
+		let url = new URL(value.replace(/^[A-Za-z0-9+.-]+:\/\//, 'http://'));
+		let host = url.hostname.replace(/^\[|\]$/g, '');
+		return stubValidator.apply('hostname', host) || stubValidator.apply('ipaddr', host);
+	} catch (e) {
+		return false;
+	}
+}
+
 /* Modes that rely on the classic single main node. "custom" and "simple"
  * both provide their own outbounds and must not show main-node widgets. */
 const legacyModes = /^(gfwlist|bypass_mainland_china|proxy_mainland_china|global)$/;
@@ -341,9 +360,8 @@ return view.extend({
 		so.default = '8.8.8.8';
 		so.rmempty = false;
 		so.validate = function(section_id, value) {
-			if (section_id && value && value !== 'wan')
-				if (!isValidHttpURL(value) && !stubValidator.apply('ipaddr', value))
-					return _('Expecting: %s').format(_('valid DNS server address'));
+			if (section_id && value && !isValidDNSServer(value))
+				return _('Expecting: %s').format(_('valid DNS server address'));
 
 			return true;
 		}
@@ -358,9 +376,8 @@ return view.extend({
 		so.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
 		so.rmempty = false;
 		so.validate = function(section_id, value) {
-			if (section_id && value && !['nil', 'wan'].includes(value))
-				if (!isValidHttpURL(value) && !stubValidator.apply('ipaddr', value))
-					return _('Expecting: %s').format(_('valid DNS server address'));
+			if (section_id && value && !isValidDNSServer(value))
+				return _('Expecting: %s').format(_('valid DNS server address'));
 
 			return true;
 		}
@@ -390,7 +407,7 @@ return view.extend({
 			_('Base URL used to resolve built-in rule set names from MetaCubeX/meta-rules-dat.'));
 		for (let i in hp.simple_ruleset_url_bases)
 			so.value(i, hp.simple_ruleset_url_bases[i]);
-		so.default = 'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo';
+		so.default = 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo';
 		so.rmempty = false;
 		so.validate = function(section_id, value) {
 			if (section_id && value && !isValidHttpURL(value))
@@ -400,8 +417,9 @@ return view.extend({
 		}
 
 		so = ss.option(form.ListValue, 'ruleset_download_detour', _('Download / DNS node'),
-			_('Node used to download rule sets and to reach the remote DNS server. Leave empty for a direct connection.'));
-		so.value('', _('Direct'));
+			_('Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; select Direct to bypass the proxy.'));
+		so.value('', _('Automatic'));
+		so.value('direct-out', _('Direct'));
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 
@@ -493,13 +511,11 @@ return view.extend({
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.editable = true;
+		/* Dangling references are dropped by the generator, so do not block
+		 * saving the whole form just because a node was deleted meanwhile. */
 		so.validate = function(section_id, value) {
-			if (section_id) {
-				if (!value)
-					return _('Expecting: %s').format(_('non-empty value'));
-				if (!proxy_nodes[value])
-					return _('The selected node does not exist.');
-			}
+			if (section_id && !value)
+				return _('Expecting: %s').format(_('non-empty value'));
 
 			return true;
 		}
