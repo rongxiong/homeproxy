@@ -477,8 +477,11 @@ const simple = (routing_mode === 'simple') ? {
 	final: 'direct-out',
 	aux_detour: null,
 	dns_server: null,
+<<<<<<< HEAD
 	china_dns_server: null,
 	cn_ruleset_tag: null,
+=======
+>>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
 	health_url: 'https://www.gstatic.com/generate_204',
 	health_interval: null,
 	update_interval: '1d'
@@ -490,7 +493,10 @@ if (simple) {
 		'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo', /\/$/, '');
 
 	simple.dns_server = simple_cfg.dns_server;
+<<<<<<< HEAD
 	simple.china_dns_server = simple_cfg.china_dns_server;
+=======
+>>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
 	simple.health_url = simple_cfg.health_check_url || 'https://www.gstatic.com/generate_204';
 	simple.health_interval = strToTime(simple_cfg.health_check_interval || '180');
 	simple.update_interval = simple_cfg.ruleset_update_interval || '1d';
@@ -557,11 +563,14 @@ if (simple) {
 		simple.aux_detour = simple.groups[0].tag;
 	else if (length(keys(simple.node_cfgs)))
 		simple.aux_detour = simple_node_tag(keys(simple.node_cfgs)[0]);
+<<<<<<< HEAD
 
 	/* DNS splitting needs the CN domain rule set even when no row uses it.
 	 * simple_add_ruleset() de-duplicates it against routing rows by URL. */
 	if (!isEmpty(simple.china_dns_server) && simple.china_dns_server !== 'nil')
 		simple.cn_ruleset_tag = simple_add_ruleset(simple, base, 'geosite/geolocation-cn');
+=======
+>>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
 }
 /* Simple routing translation end */
 
@@ -775,6 +784,7 @@ if (!isEmpty(main_node)) {
 	} else {
 		config.dns.final = 'default-dns';
 	}
+<<<<<<< HEAD
 
 	/* Domestic domains use a direct DNS server so Chinese sites keep their
 	 * local CDN addresses; everything else still uses the remote DNS. */
@@ -795,6 +805,8 @@ if (!isEmpty(main_node)) {
 			server: 'china-dns'
 		});
 	}
+=======
+>>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
 }
 /* DNS end */
 

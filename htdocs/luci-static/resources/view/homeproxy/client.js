@@ -348,6 +348,7 @@ return view.extend({
 			return true;
 		}
 
+<<<<<<< HEAD
 		so = ss.option(form.Value, 'china_dns_server', _('China DNS server'),
 			_('Domestic domains are resolved by this server over a direct connection. Set to Disable to use the DNS server above for all domains.'));
 		so.value('nil', _('Disable'));
@@ -365,6 +366,8 @@ return view.extend({
 			return true;
 		}
 
+=======
+>>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
 		so = ss.option(form.Value, 'health_check_url', _('Health check URL'),
 			_('Used to test node availability. The first available node in the configured order is used; a failed node is skipped until it passes a later check.'));
 		so.placeholder = 'https://www.gstatic.com/generate_204';
@@ -421,6 +424,7 @@ return view.extend({
 		ss.nodescriptions = true;
 		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('Routing rule'), _('Add a routing rule'), data[0]);
 		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
+<<<<<<< HEAD
 
 		/* A row only needs a display label, so do not ask for a UCI identifier.
 		 * Generate a unique one on click and create the row immediately. */
@@ -447,6 +451,9 @@ return view.extend({
 
 			return createEl;
 		};
+=======
+		ss.renderSectionAdd = L.bind(hp.renderSectionAdd, this, ss);
+>>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
 
 		so = ss.option(form.Value, 'label', _('Label'));
 		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);

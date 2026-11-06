@@ -278,7 +278,10 @@ if (!uci.get(uciconfig, ucisimple))
 const simple_defaults = {
 	default_outbound: 'direct-out',
 	dns_server: '8.8.8.8',
+<<<<<<< HEAD
 	china_dns_server: '223.5.5.5',
+=======
+>>>>>>> a7d4f0023a8bfacf8706d6c69a56cd40dc1cd57e
 	health_check_url: 'https://www.gstatic.com/generate_204',
 	health_check_interval: '180',
 	ruleset_url_base: 'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo',
