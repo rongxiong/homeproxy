@@ -25,7 +25,9 @@ const uciinfra = 'infra',
       ucirouting = 'routing',
       uciroutingnode = 'routing_node',
       uciroutingrule = 'routing_rule',
-      uciserver = 'server';
+      uciserver = 'server',
+      ucisimple = 'simple',
+      ucisimplerule = 'simple_rule';
 
 /* chinadns-ng has been removed */
 if (uci.get(uciconfig, uciinfra, 'china_dns_port'))
@@ -267,6 +269,27 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 	/* domain_strategy is now pointless without sniff override */
 	if (!isEmpty(cfg.domain_strategy))
 		uci.delete(uciconfig, cfg['.name'], 'domain_strategy');
+});
+
+/* simple routing mode was introduced */
+if (!uci.get(uciconfig, ucisimple))
+	uci.set(uciconfig, ucisimple, uciconfig);
+
+const simple_defaults = {
+	default_outbound: 'direct-out',
+	dns_server: '8.8.8.8',
+	health_check_url: 'https://www.gstatic.com/generate_204',
+	health_check_interval: '180',
+	ruleset_url_base: 'https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo',
+	ruleset_update_interval: '1d'
+};
+for (let option in simple_defaults)
+	if (uci.get(uciconfig, ucisimple, option) == null)
+		uci.set(uciconfig, ucisimple, option, simple_defaults[option]);
+
+uci.foreach(uciconfig, ucisimplerule, (cfg) => {
+	if (!cfg.enabled)
+		uci.set(uciconfig, cfg['.name'], 'enabled', '1');
 });
 
 if (!isEmpty(uci.changes(uciconfig)))
