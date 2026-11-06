@@ -87,10 +87,11 @@ function isValidHttpURL(value) {
 
 /* DNS servers may be a bare IP or any protocol URL supported by sing-box
  * (udp/tcp/tls/quic/https), so do not restrict the scheme to http(s). */
-function isValidDNSServer(value) {
+function isValidDNSServer(value, allowNil) {
 	if (!value)
 		return false;
-	if (['wan', 'nil'].includes(value))
+	/* 'nil' only means "disable" for china_dns_server. */
+	if (value === 'wan' || (allowNil && value === 'nil'))
 		return true;
 	if (stubValidator.apply('ipaddr', value))
 		return true;
@@ -376,7 +377,7 @@ return view.extend({
 		so.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
 		so.rmempty = false;
 		so.validate = function(section_id, value) {
-			if (section_id && value && !isValidDNSServer(value))
+			if (section_id && value && !isValidDNSServer(value, true))
 				return _('Expecting: %s').format(_('valid DNS server address'));
 
 			return true;
@@ -417,7 +418,7 @@ return view.extend({
 		}
 
 		so = ss.option(form.ListValue, 'ruleset_download_detour', _('Download / DNS node'),
-			_('Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; select Direct to bypass the proxy.'));
+			_('Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; selecting Direct also disables the remote DNS server and China DNS splitting.'));
 		so.value('', _('Automatic'));
 		so.value('direct-out', _('Direct'));
 		for (let i in proxy_nodes)
@@ -426,6 +427,12 @@ return view.extend({
 		so = ss.option(form.Value, 'ruleset_update_interval', _('Rule set update interval'),
 			_('How often remote rule sets are refreshed, e.g. 1d.'));
 		so.placeholder = '1d';
+		so.validate = function(section_id, value) {
+			if (section_id && value && !/^\d+(ms|s|m|h|d)$/.test(value))
+				return _('Expecting: %s').format(_('a duration such as 1d or 12h'));
+
+			return true;
+		}
 		/* Simple global settings end */
 
 		/* Simple routing rules start */
@@ -1715,11 +1722,12 @@ return view.extend({
 		so.write = function(_section_id, value) {
 			return callWriteDomainList('proxy_list', value);
 		}
-		so.remove = function(/* ... */) {
-			let routing_mode = this.section.formvalue('config', 'routing_mode');
-			if (!['custom', 'simple'].includes(routing_mode))
-				return callWriteDomainList('proxy_list', '');
-			return true;
+		so.remove = function(section_id) {
+			/* Keep the file when depends() hides this field in custom/simple,
+			 * but still let the user clear it while the field is active. */
+			if (section_id && !this.isActive(section_id))
+				return true;
+			return callWriteDomainList('proxy_list', '');
 		}
 		so.validate = function(section_id, value) {
 			if (section_id && value)
@@ -1747,11 +1755,12 @@ return view.extend({
 		so.write = function(_section_id, value) {
 			return callWriteDomainList('direct_list', value);
 		}
-		so.remove = function(/* ... */) {
-			let routing_mode = this.section.formvalue('config', 'routing_mode');
-			if (!['custom', 'simple'].includes(routing_mode))
-				return callWriteDomainList('direct_list', '');
-			return true;
+		so.remove = function(section_id) {
+			/* Keep the file when depends() hides this field in custom/simple,
+			 * but still let the user clear it while the field is active. */
+			if (section_id && !this.isActive(section_id))
+				return true;
+			return callWriteDomainList('direct_list', '');
 		}
 		so.validate = function(section_id, value) {
 			if (section_id && value)

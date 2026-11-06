@@ -40,6 +40,14 @@ jobs:
       - name: Checkout source tree
         uses: actions/checkout@v6
 
+      - name: Static checks
+        run: |
+          for f in htdocs/luci-static/resources/homeproxy.js htdocs/luci-static/resources/view/homeproxy/*.js; do
+            node --check "$f"
+          done
+          sh -n root/etc/init.d/homeproxy
+          python3 -c 'import glob, json; [json.load(open(p)) for p in glob.glob("**/*.json", recursive=True)]'
+
       - name: Checkout apk
         uses: actions/checkout@v6
         with:

@@ -3159,8 +3159,8 @@ msgid "In seconds. A failed primary node is re-evaluated on the next check; fail
 msgstr "单位为秒。故障主节点会在下一次检查时重新评估，因此不会立即切回。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; select Direct to bypass the proxy."
-msgstr "用于下载规则集和访问远程 DNS 服务器的节点。留空则复用第一个分流组；选择「直连」可强制不走代理。"
+msgid "Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; selecting Direct also disables the remote DNS server and China DNS splitting."
+msgstr "用于下载规则集和访问远程 DNS 服务器的节点。留空则复用第一个分流组；选择「直连」还会同时停用远程 DNS 服务器与国内 DNS 分流。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Ordered fallback nodes. The next one is used only when the previous one fails the health check."
@@ -3221,6 +3221,10 @@ msgstr "jsDelivr CDN（Fastly）"
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "valid URL or rule set name"
 msgstr "有效的 URL 或规则集名称"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a duration such as 1d or 12h"
+msgstr "1d 或 12h 这样的时长"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Add"

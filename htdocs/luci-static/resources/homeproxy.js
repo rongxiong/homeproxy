@@ -371,14 +371,14 @@ return baseclass.extend({
 
 	validatePortRange(section_id, value) {
 		if (section_id && value) {
-			value = value.match(/^(\d+)?\:(\d+)?$/);
-			if (value && (value[1] || value[2])) {
-				if (!value[1])
-					value[1] = 0;
-				else if (!value[2])
-					value[2] = 65535;
+			let m = value.match(/^(\d+)?\:(\d+)?$/);
+			if (m && (m[1] || m[2])) {
+				/* Capture groups are strings: comparing them directly would
+				 * use lexicographic order ("5" < "100" is false). */
+				let start = m[1] ? parseInt(m[1], 10) : 0,
+				    end = m[2] ? parseInt(m[2], 10) : 65535;
 
-				if (value[1] < value[2] && value[2] <= 65535)
+				if (start >= 0 && start < end && end <= 65535)
 					return true;
 			}
 

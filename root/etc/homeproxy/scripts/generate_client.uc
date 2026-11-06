@@ -7,14 +7,14 @@
 
 'use strict';
 
-import { readfile, writefile } from 'fs';
+import { open, readfile, writefile } from 'fs';
 import { isnan } from 'math';
 import { connect } from 'ubus';
 import { cursor } from 'uci';
 
 import {
 	isEmpty, parseURL, strToBool, strToInt, strToTime,
-	removeBlankAttrs, validation, HP_DIR, RUN_DIR
+	removeBlankAttrs, validation, getTime, HP_DIR, RUN_DIR
 } from 'homeproxy';
 
 const ubus = connect();
@@ -423,14 +423,27 @@ function simple_ruleset_url(base, value) {
 	return base + '/' + category + '/' + replace(name, /@/g, '%40') + '.srs';
 }
 
+function simple_log(message) {
+	const logfile = open(RUN_DIR + '/homeproxy.log', 'a');
+	if (!logfile)
+		return;
+
+	logfile.write(`${getTime()} [CLIENT] ${message}\n`);
+	logfile.close();
+}
+
 function simple_track_node(ctx, name) {
 	if (isEmpty(name))
 		return null;
 
 	const node = uci.get_all(uciconfig, name) || {};
-	/* Silently drop dangling references, e.g. a node deleted on the node page. */
-	if (isEmpty(node.type))
+	/* A node deleted from the node page or removed by a subscription update
+	 * leaves a dangling reference. Log it and drop the row instead of
+	 * emitting an outbound that cannot be resolved. */
+	if (isEmpty(node.type)) {
+		simple_log(sprintf('Simple routing: node %s is missing, dropping reference.', name));
 		return null;
+	}
 
 	ctx.node_cfgs[name] = node;
 	return name;
@@ -1138,7 +1151,7 @@ if (!isEmpty(main_node)) {
 		if (cfg.enabled !== '1')
 			return null;
 
-		push(config.route.rules, {
+		const rule = {
 			ip_version: strToInt(cfg.ip_version),
 			protocol: cfg.protocol,
 			network: cfg.network,
@@ -1171,7 +1184,17 @@ if (!isEmpty(main_node)) {
 			tls_fragment: strToBool(cfg.tls_fragment),
 			tls_fragment_fallback_delay: strToTime(cfg.tls_fragment_fallback_delay),
 			tls_record_fragment: strToBool(cfg.tls_record_fragment)
-		});
+		};
+
+		if (cfg.action === 'resolve') {
+			rule.server = get_resolver(cfg.resolve_server);
+			rule.strategy = cfg.resolve_strategy;
+			rule.disable_cache = strToBool(cfg.resolve_disable_cache);
+			rule.rewrite_ttl = strToInt(cfg.resolve_rewrite_ttl);
+			rule.client_subnet = cfg.resolve_client_subnet;
+		}
+
+		push(config.route.rules, rule);
 	});
 
 	config.route.final = get_outbound(default_outbound);

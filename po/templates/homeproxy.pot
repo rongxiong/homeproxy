@@ -3089,7 +3089,7 @@ msgid "In seconds. A failed primary node is re-evaluated on the next check; fail
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; select Direct to bypass the proxy."
+msgid "Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; selecting Direct also disables the remote DNS server and China DNS splitting."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
@@ -3150,6 +3150,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "valid URL or rule set name"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a duration such as 1d or 12h"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
