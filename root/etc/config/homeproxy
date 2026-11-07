@@ -20,6 +20,7 @@ config homeproxy 'infra'
 
 config homeproxy 'migration'
 	option crontab '1'
+	option simple_dns_split '1'
 
 config homeproxy 'config'
 	option main_node 'nil'
@@ -63,6 +64,8 @@ config homeproxy 'simple'
 	option health_check_interval '180'
 	option ruleset_url_base 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo'
 	option ruleset_download_detour ''
+	option remote_dns_detour ''
+	option bypass_cn_traffic '0'
 	option ruleset_update_interval '1d'
 
 config homeproxy 'dns'

@@ -171,7 +171,7 @@ uci.foreach(uciconfig, ucidnsrule, (cfg) => {
 	/* outbound was removed in sb 1.12 */
 	if (cfg.outbound) {
 		uci.delete(uciconfig, cfg['.name']);
-		if (!cfg.enabled)
+		if (!cfg.enabled || cfg.enabled === '0')
 			return;
 
 		map(cfg.outbound, (outbound) => {
@@ -275,6 +275,21 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 if (!uci.get(uciconfig, ucisimple))
 	uci.set(uciconfig, ucisimple, uciconfig);
 
+/* The rule set download node used to control remote DNS as well. Preserve
+ * explicit legacy choices once; empty Automatic adopts the new aligned DNS. */
+if (!uci.get(uciconfig, ucimigration, 'simple_dns_split')) {
+	const legacy_download_detour = uci.get(uciconfig, ucisimple, 'ruleset_download_detour');
+	if (uci.get(uciconfig, ucisimple, 'remote_dns_detour') == null) {
+		if (legacy_download_detour === 'direct-out')
+			uci.set(uciconfig, ucisimple, 'remote_dns_detour', 'wan');
+		else if (!isEmpty(legacy_download_detour))
+			uci.set(uciconfig, ucisimple, 'remote_dns_detour', legacy_download_detour);
+		else
+			uci.set(uciconfig, ucisimple, 'remote_dns_detour', '');
+	}
+	uci.set(uciconfig, ucimigration, 'simple_dns_split', '1');
+}
+
 const simple_defaults = {
 	default_outbound: 'direct-out',
 	dns_server: '8.8.8.8',
@@ -283,6 +298,8 @@ const simple_defaults = {
 	health_check_interval: '180',
 	ruleset_url_base: 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo',
 	ruleset_download_detour: '',
+	remote_dns_detour: '',
+	bypass_cn_traffic: '0',
 	ruleset_update_interval: '1d'
 };
 for (let option in simple_defaults)

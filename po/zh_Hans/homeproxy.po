@@ -3103,8 +3103,8 @@ msgid "valid uuid"
 msgstr "有效 uuid"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set."
-msgstr "可填写完整的 .srs URL，或 geosite/netflix 这样的标识。只填名称时默认按 geosite 规则集处理。"
+msgid "A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set. For custom URLs, include /geosite/ in the path to enable DNS routing; GeoIP sets are only used for data routing."
+msgstr "可填写完整的 .srs URL，或 geosite/netflix 这样的标识。只填名称时默认按 geosite 规则集处理。自定义 URL 需在路径中包含 /geosite/ 才会参与 DNS 分流；GeoIP 规则集仅用于数据路由。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Base URL used to resolve built-in rule set names from MetaCubeX/meta-rules-dat."
@@ -3127,8 +3127,16 @@ msgid "Custom rule sets"
 msgstr "自定义规则集"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Download / DNS node"
-msgstr "下载 / DNS 节点"
+msgid "Rule set download node"
+msgstr "规则集下载节点"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Remote DNS node"
+msgstr "远程 DNS 节点"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "WAN DNS only"
+msgstr "仅使用 WAN DNS"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Fallback nodes"
@@ -3159,16 +3167,24 @@ msgid "In seconds. A failed primary node is re-evaluated on the next check; fail
 msgstr "单位为秒。故障主节点会在下一次检查时重新评估，因此不会立即切回。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; selecting Direct also disables the remote DNS server and China DNS splitting."
-msgstr "用于下载规则集和访问远程 DNS 服务器的节点。留空则复用第一个分流组；选择「直连」还会同时停用远程 DNS 服务器与国内 DNS 分流。"
+msgid "Node used to download remote rule sets. Automatic reuses the first routing outbound and its fallback nodes; Direct downloads without a proxy. This option no longer controls DNS."
+msgstr "用于下载远程规则集的节点。自动模式复用第一个分流出站及其备用节点；直连不通过代理下载。此选项不再控制 DNS。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "How remote DNS is reached. Automatic aligns DNS with the matching data outbound; WAN DNS only disables remote DNS and China DNS splitting; Direct reaches the configured remote DNS without a proxy."
+msgstr "远程 DNS 的访问方式。自动模式让 DNS 与匹配的数据出站保持一致；仅使用 WAN DNS 会停用远程 DNS 和国内 DNS 分流；直连会不经代理访问所配置的远程 DNS。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Optional firewall fast path for mainland China IP addresses. It is enabled only when the default outbound is Direct, gaming mode is not configured, and every enabled rule uses only non-China GeoSite rule sets; otherwise it is ignored to avoid bypassing proxy rules."
+msgstr "可选的中国大陆 IP 防火墙快速路径。仅当默认出站为直连、未配置 gaming mode 且所有启用规则只使用非中国 GeoSite 规则集时才会生效；否则会被忽略，以免绕过代理规则。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Ordered fallback nodes. The next one is used only when the previous one fails the health check."
 msgstr "按先后顺序排列的备用节点。只有前一个节点健康检查失败时才会使用下一个。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Outbound for traffic not matched by any routing rule below."
-msgstr "未被下方任何分流规则匹配的流量所使用的出站。"
+msgid "Outbound for traffic not matched by any routing rule below. Direct does not automatically proxy non-China traffic; add explicit rules for a bypass-mainland-China policy."
+msgstr "未被下方任何分流规则匹配的流量所使用的出站。直连不会自动代理非中国流量；如需「绕过大陆」策略，请显式添加相应规则。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Remote DNS server used through a proxy node. Support UDP, TCP, DoH, DoQ, DoT."

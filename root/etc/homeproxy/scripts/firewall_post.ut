@@ -3,7 +3,7 @@
 {%-
 import { readfile } from 'fs';
 import { cursor } from 'uci';
-import { isEmpty } from '/etc/homeproxy/scripts/homeproxy.uc';
+import { isEmpty, RUN_DIR } from '/etc/homeproxy/scripts/homeproxy.uc';
 
 const fw4 = require('fw4');
 
@@ -57,8 +57,9 @@ const uci = cursor();
 uci.load(cfgname);
 
 const routing_mode = uci.get(cfgname, 'config', 'routing_mode') || 'bypass_mainland_china';
-/* Only the classic main-node modes use nft based geo/global-proxy shortcuts.
- * "custom" and "simple" leave every routing decision to sing-box. */
+/* Classic main-node modes use nft based geo/global-proxy shortcuts. Custom
+ * and simple normally leave every routing decision to sing-box; simple can
+ * opt into a guarded mainland China fast path written by generate_client.uc. */
 const legacy_mode = !!match(routing_mode, /^(gfwlist|bypass_mainland_china|proxy_mainland_china|global)$/);
 let outbound_node, outbound_udp_node, china_dns_server, bypass_cn_traffic;
 
@@ -71,6 +72,12 @@ if (legacy_mode) {
 	bypass_cn_traffic = uci.get(cfgname, 'routing', 'bypass_cn_traffic') || '0';
 } else {
 	outbound_node = uci.get(cfgname, 'simple', 'default_outbound') || 'direct-out';
+	china_dns_server = uci.get(cfgname, 'simple', 'china_dns_server');
+
+	/* The generator validates that no proxy rule can be bypassed. A missing
+	 * or stale state file always falls back to routing through sing-box. */
+	const simple_bypass_state = readfile(RUN_DIR + '/simple-bypass-cn');
+	bypass_cn_traffic = (!isEmpty(simple_bypass_state) && trim(simple_bypass_state) === '1') ? '1' : '0';
 }
 
 let routing_port = uci.get(cfgname, 'config', 'routing_port');

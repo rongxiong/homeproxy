@@ -3033,7 +3033,7 @@ msgid "valid uuid"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set."
+msgid "A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set. For custom URLs, include /geosite/ in the path to enable DNS routing; GeoIP sets are only used for data routing."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
@@ -3057,7 +3057,15 @@ msgid "Custom rule sets"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Download / DNS node"
+msgid "Rule set download node"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Remote DNS node"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "WAN DNS only"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
@@ -3089,7 +3097,15 @@ msgid "In seconds. A failed primary node is re-evaluated on the next check; fail
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; selecting Direct also disables the remote DNS server and China DNS splitting."
+msgid "Node used to download remote rule sets. Automatic reuses the first routing outbound and its fallback nodes; Direct downloads without a proxy. This option no longer controls DNS."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "How remote DNS is reached. Automatic aligns DNS with the matching data outbound; WAN DNS only disables remote DNS and China DNS splitting; Direct reaches the configured remote DNS without a proxy."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Optional firewall fast path for mainland China IP addresses. It is enabled only when the default outbound is Direct, gaming mode is not configured, and every enabled rule uses only non-China GeoSite rule sets; otherwise it is ignored to avoid bypassing proxy rules."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
@@ -3097,7 +3113,7 @@ msgid "Ordered fallback nodes. The next one is used only when the previous one f
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Outbound for traffic not matched by any routing rule below."
+msgid "Outbound for traffic not matched by any routing rule below. Direct does not automatically proxy non-China traffic; add explicit rules for a bypass-mainland-China policy."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js

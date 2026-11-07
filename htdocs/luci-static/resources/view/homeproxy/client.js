@@ -344,7 +344,7 @@ return view.extend({
 
 		ss = o.subsection;
 		so = ss.option(form.ListValue, 'default_outbound', _('Default outbound'),
-			_('Outbound for traffic not matched by any routing rule below.'));
+			_('Outbound for traffic not matched by any routing rule below. Direct does not automatically proxy non-China traffic; add explicit rules for a bypass-mainland-China policy.'));
 		so.value('direct-out', _('Direct'));
 		so.value('block-out', _('Block'));
 		for (let i in proxy_nodes)
@@ -417,12 +417,29 @@ return view.extend({
 			return true;
 		}
 
-		so = ss.option(form.ListValue, 'ruleset_download_detour', _('Download / DNS node'),
-			_('Node used to download rule sets and reach the remote DNS server. Leave empty to reuse the first routing group; selecting Direct also disables the remote DNS server and China DNS splitting.'));
+		so = ss.option(form.ListValue, 'ruleset_download_detour', _('Rule set download node'),
+			_('Node used to download remote rule sets. Automatic reuses the first routing outbound and its fallback nodes; Direct downloads without a proxy. This option no longer controls DNS.'));
 		so.value('', _('Automatic'));
 		so.value('direct-out', _('Direct'));
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
+		so.default = '';
+		so.rmempty = false;
+
+		so = ss.option(form.ListValue, 'remote_dns_detour', _('Remote DNS node'),
+			_('How remote DNS is reached. Automatic aligns DNS with the matching data outbound; WAN DNS only disables remote DNS and China DNS splitting; Direct reaches the configured remote DNS without a proxy.'));
+		so.value('', _('Automatic'));
+		so.value('wan', _('WAN DNS only'));
+		so.value('direct-out', _('Direct'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.default = '';
+		so.rmempty = false;
+
+		so = ss.option(form.Flag, 'bypass_cn_traffic', _('Bypass CN traffic'),
+			_('Optional firewall fast path for mainland China IP addresses. It is enabled only when the default outbound is Direct, gaming mode is not configured, and every enabled rule uses only non-China GeoSite rule sets; otherwise it is ignored to avoid bypassing proxy rules.'));
+		so.default = so.disabled;
+		so.rmempty = false;
 
 		so = ss.option(form.Value, 'ruleset_update_interval', _('Rule set update interval'),
 			_('How often remote rule sets are refreshed, e.g. 1d.'));
@@ -490,7 +507,7 @@ return view.extend({
 		so.modalonly = true;
 
 		so = ss.option(form.DynamicList, 'rule_set_urls', _('Custom rule sets'),
-			_('A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set.'));
+			_('A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set. For custom URLs, include /geosite/ in the path to enable DNS routing; GeoIP sets are only used for data routing.'));
 		so.validate = function(section_id, value) {
 			if (section_id && value) {
 				let values = Array.isArray(value) ? value : [value];
@@ -765,7 +782,7 @@ return view.extend({
 		so.placeholder = '180';
 		so.validate = function(section_id, value) {
 			if (section_id && value) {
-				let idle_timeout = this.section.formvalue(section_id, 'idle_timeout') || '1800';
+				let idle_timeout = this.section.formvalue(section_id, 'urltest_idle_timeout') || '1800';
 				if (parseInt(value) > parseInt(idle_timeout))
 					return _('Test interval must be less or equal than idle timeout.');
 			}
