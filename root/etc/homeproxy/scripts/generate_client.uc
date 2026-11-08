@@ -582,7 +582,9 @@ const simple = (routing_mode === 'simple') ? {
 	bypass_cn_effective: false,
 	health_url: 'https://www.gstatic.com/generate_204',
 	health_interval: null,
-	update_interval: '1d'
+	update_interval: '1d',
+	dns_cache_size: '4096',
+	dns_optimistic: '0'
 } : null;
 
 if (simple) {
@@ -596,6 +598,8 @@ if (simple) {
 	simple.health_url = simple_cfg.health_check_url || 'https://www.gstatic.com/generate_204';
 	simple.health_interval = strToTime(simple_cfg.health_check_interval || '180');
 	simple.update_interval = simple_cfg.ruleset_update_interval || '1d';
+	simple.dns_cache_size = simple_cfg.dns_cache_size || '4096';
+	simple.dns_optimistic = simple_cfg.dns_optimistic || '0';
 
 	/* Ensure the log directory exists. The fast-path state is written only
 	 * after sing-box-c.json has been generated successfully. */
@@ -937,6 +941,23 @@ if (!isEmpty(main_node)) {
 
 	config.dns.final = get_resolver(dns_default_server);
 } else if (simple) {
+	/* Return expired answers immediately and refresh them in the background
+	 * (sing-box 1.14+, default stale window: 3 days). Opt-in: a shorter TTL
+	 * keeps the cache closer to the upstream view. */
+	config.dns.optimistic = strToBool(simple.dns_optimistic);
+
+	/* Keep the sing-box LRU in step with the dnsmasq cache. sing-box defaults
+	 * to 1024 entries, which would evict answers that dnsmasq still considers
+	 * hot. Zero keeps the sing-box default. */
+	let cache_capacity = strToInt(simple.dns_cache_size);
+	if (cache_capacity) {
+		if (cache_capacity < 1024)
+			cache_capacity = 1024;
+		else if (cache_capacity > 10000)
+			cache_capacity = 10000;
+		config.dns.cache_capacity = cache_capacity;
+	}
+
 	/* Proxy domains resolve through the same outbound that carries their data.
 	 * Unmatched direct traffic keeps the WAN resolver and therefore no longer
 	 * waits for an unrelated proxy DNS connection. */
@@ -1442,6 +1463,9 @@ if (!isEmpty(main_node)) {
 		config.dns.final, simple.dns_rule_count,
 		simple.cn_dns_enabled ? 'enabled' : 'disabled',
 		simple.remote_dns_detour || 'auto'));
+	simple_log(sprintf('Simple routing: sing-box DNS cache capacity %s; optimistic cache %s.',
+		config.dns.cache_capacity || 'default',
+		strToBool(simple.dns_optimistic) ? 'enabled' : 'disabled'));
 
 	if (isEmpty(config.route.rule_set))
 		config.route.rule_set = null;

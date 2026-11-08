@@ -67,6 +67,8 @@ config homeproxy 'simple'
 	option remote_dns_detour ''
 	option bypass_cn_traffic '0'
 	option ruleset_update_interval '1d'
+	option dns_cache_size '4096'
+	option dns_optimistic '0'
 
 config homeproxy 'dns'
 	option dns_strategy 'prefer_ipv4'

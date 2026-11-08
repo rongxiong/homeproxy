@@ -25,15 +25,8 @@ check_list_update() {
 	local listrepo="$2"
 	local listref="$3"
 	local listname="$4"
-	local lock="$RUN_DIR/update_resources-$listtype.lock"
 	local github_token="$(uci -q get homeproxy.config.github_token)"
 	local wget="wget --timeout=10 -q"
-
-	exec 200>"$lock"
-	if ! flock -n 200 &> "/dev/null"; then
-		log "[$(to_upper "$listtype")] A task is already running."
-		return 2
-	fi
 
 	[ -z "$github_token" ] || github_token="--header=Authorization: Bearer $github_token"
 	local list_info="$($wget "${github_token:--q}" -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
@@ -65,6 +58,14 @@ check_list_update() {
 
 	return 0
 }
+
+# Serialize updates across all resource types and all callers (web UI and
+# cron). Queuing here is cheap because the caller is detached from rpcd.
+exec 9>"$RUN_DIR/update_resources.lock"
+if ! flock -w 120 9; then
+	log "[$(to_upper "$1")] A task is already running."
+	exit 2
+fi
 
 case "$1" in
 "china_ip4")

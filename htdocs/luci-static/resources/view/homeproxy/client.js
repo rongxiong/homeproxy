@@ -452,6 +452,19 @@ return view.extend({
 
 			return true;
 		}
+
+		/* Simple DNS cache start */
+		so = ss.option(form.Value, 'dns_cache_size', _('DNS cache size'),
+			_('Number of DNS records cached by dnsmasq and sing-box. Larger values use more RAM but keep repeated lookups away from upstream DNS. Set to 0 to keep the current dnsmasq setting and the sing-box default.'));
+		so.datatype = 'range(0,10000)';
+		so.default = '4096';
+		so.rmempty = false;
+
+		so = ss.option(form.Flag, 'dns_optimistic', _('Optimistic DNS cache'),
+			_('Return expired cached answers immediately and refresh them in the background (requires sing-box 1.14+, default stale window: 3 days). This reduces lookup latency, but CDN or node changes may briefly keep using stale addresses.'));
+		so.default = so.disabled;
+		so.rmempty = false;
+		/* Simple DNS cache end */
 		/* Simple global settings end */
 
 		/* Simple routing rules start */

@@ -2820,6 +2820,11 @@ msgstr "更新时间"
 msgid "Update via proxy"
 msgstr "使用代理更新"
 
+#: htdocs/luci-static/resources/view/homeproxy/status.js:158
+#: htdocs/luci-static/resources/view/homeproxy/status.js:188
+msgid "Updating..."
+msgstr "正在更新..."
+
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1104
 msgid "Upload ECH config"
 msgstr "上传 ECH 配置"
@@ -3249,3 +3254,19 @@ msgstr "添加"
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Domestic domains are resolved by this server over a direct connection. Set to Disable to use the DNS server above for all domains."
 msgstr "国内域名将由该服务器直连解析。设为「禁用」则所有域名都使用上方的 DNS 服务器。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "DNS cache size"
+msgstr "DNS 缓存条数"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Number of DNS records cached by dnsmasq and sing-box. Larger values use more RAM but keep repeated lookups away from upstream DNS. Set to 0 to keep the current dnsmasq setting and the sing-box default."
+msgstr "dnsmasq 与 sing-box 缓存的 DNS 记录条数。数值越大占用内存越多，但重复查询可直接命中缓存，无需访问上游 DNS。设为 0 表示保持 dnsmasq 现有设置和 sing-box 默认值。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Optimistic DNS cache"
+msgstr "乐观 DNS 缓存"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Return expired cached answers immediately and refresh them in the background (requires sing-box 1.14+, default stale window: 3 days). This reduces lookup latency, but CDN or node changes may briefly keep using stale addresses."
+msgstr "立即返回已过期的缓存结果并在后台刷新（需要 sing-box 1.14+，默认陈旧窗口为 3 天）。可降低解析延迟，但 CDN 或节点变化后可能短暂继续使用旧地址。"

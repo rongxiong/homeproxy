@@ -476,3 +476,37 @@ logread -e homeproxy | tail -n 50
 然后在 LuCI 保存一次表单，确认 Automatic 可以保存，并强制刷新浏览器缓存。
 
 > 手动覆盖的文件会在以后通过 `opkg` / `apk` 升级 HomeProxy 包时被覆盖；正式发布时应重新打包，或在每次升级后重新执行本节同步步骤。
+
+---
+
+## 9. 用空闲内存换 DNS 性能：简洁模式缓存（2026-11-08）
+
+简洁模式的 DNS 链路是 `dnsmasq → sing-box`，两层默认都使用保守缓存：dnsmasq 缓存条目少，sing-box 按 TTL 过期。设备内存有余量时，可以在不改变分流语义的前提下提高命中率。
+
+| UCI 选项（`config homeproxy 'simple'`） | 默认值 | 作用层 | 行为 |
+| --- | --- | --- | --- |
+| `dns_cache_size` | `4096` | dnsmasq + sing-box | 简洁模式下写入 dnsmasq `cache-size`，并按同一数值生成 sing-box `dns.cache_capacity`；dnsmasq 侧只增不减（系统 `cachesize` 更大时保持系统值），设为 `0` 时不覆盖 dnsmasq 设置、sing-box 保持默认容量 |
+| `dns_optimistic` | `0` | sing-box | 生成 `dns.optimistic`（sing-box 1.14+），过期条目在陈旧窗口内立即返回并后台刷新，默认窗口 3 天 |
+
+约束与风险：
+
+- 容量基线：dnsmasq 编译默认 150 条，OpenWrt 典型 `cachesize=1000`；sing-box 的 `dns.cache_capacity` 默认 1024 条。默认 4096 将两层同时提升，主要影响活跃域名超过 1000 个的环境；家庭网络常见 100–500 个活跃域名时，命中率提升有限。
+- 内存开销：dnsmasq 每条约 100–200 字节（4096 条约 0.5–1 MB）；sing-box 的 LRU 保存完整 DNS 消息，4096 条通常为数 MB 量级，应以设备 RSS 实测为准。dnsmasq 官方提示缓存过大反而影响性能，`10000` 是本项目为控制内存设置的上限，不是 dnsmasq 的硬上限。
+- 覆盖顺序：OpenWrt 生成的 dnsmasq 主配置中 `cache-size` 先于 `conf-dir` 写出，因此 drop-in 中的 `cache-size` 会覆盖 `/etc/config/dhcp` 的值；本实现只提升不降低，`0` 表示不覆盖，系统显式 `cachesize=0`（禁用缓存）时也不会覆盖。
+- `dns_optimistic` 默认关闭。开启后 sing-box 会把已过期但仍在陈旧窗口（默认 3 天）内的答案立即返回，并在后台刷新；超过窗口后恢复正常解析。它比 `disable_expire` 有明确边界，但 CDN 调度、节点切换或域名换 IP 后仍可能短暂使用旧地址，不适合出口频繁变化的环境。`optimistic` 与 `disable_cache` / `disable_expire` 互斥，简洁模式不生成后两者。
+- 版本要求：`optimistic` 只在 sing-box 1.14+ 可用；低版本上手动开启会导致 `sing-box check` 失败、服务无法启动。默认关闭时不生成该字段，低版本升级后仍可正常运行。
+- 两项都只在简洁模式生效；其他路由模式的 DNS 配置不变。旧配置由 `migrate_config.uc` 补齐默认值；`init.d` 记录 dnsmasq 缓存大小，生成器记录 sing-box 容量与乐观缓存策略，均写入 `homeproxy.log`。
+
+真机验证：
+
+```sh
+grep -R 'cache-size' /tmp/dnsmasq.d /tmp/etc/dnsmasq.d 2>/dev/null
+grep 'cache_capacity' /var/run/homeproxy/sing-box-c.json
+grep 'optimistic' /var/run/homeproxy/sing-box-c.json
+sing-box check --config /var/run/homeproxy/sing-box-c.json
+kill -USR1 "$(pidof dnsmasq)" && logread -e dnsmasq | tail -n 20
+```
+
+`optimistic` 默认不写入生成配置，因此对应 `grep` 无输出属于正常；`cache_capacity` 默认应为 4096。`kill -USR1` 输出的缓存统计（cache size、insertions、evictions、hits/misses）可用于判断扩容是否真正减少淘汰；若 evictions 长期接近 0，继续增大容量不会带来收益。
+
+缓存效果应沿用第 5 节的冷/热 DNS A/B 方法对比：热查询的 `time_namelookup` 与直连 TTFB 是主要观察指标，冷查询不应因缓存而变差。只有 dnsmasq 的 hits 显著增加、上游查询减少时，才能认为缓存优化产生了实际性能收益。

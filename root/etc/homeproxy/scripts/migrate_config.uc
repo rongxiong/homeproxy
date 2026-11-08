@@ -300,7 +300,9 @@ const simple_defaults = {
 	ruleset_download_detour: '',
 	remote_dns_detour: '',
 	bypass_cn_traffic: '0',
-	ruleset_update_interval: '1d'
+	ruleset_update_interval: '1d',
+	dns_cache_size: '4096',
+	dns_optimistic: '0'
 };
 for (let option in simple_defaults)
 	if (uci.get(uciconfig, ucisimple, option) == null)
