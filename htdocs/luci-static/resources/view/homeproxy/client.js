@@ -424,7 +424,8 @@ return view.extend({
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.default = '';
-		so.rmempty = false;
+		so.rmempty = true;
+		so.optional = true;
 
 		so = ss.option(form.ListValue, 'remote_dns_detour', _('Remote DNS node'),
 			_('How remote DNS is reached. Automatic aligns DNS with the matching data outbound; WAN DNS only disables remote DNS and China DNS splitting; Direct reaches the configured remote DNS without a proxy.'));
@@ -434,7 +435,8 @@ return view.extend({
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.default = '';
-		so.rmempty = false;
+		so.rmempty = true;
+		so.optional = true;
 
 		so = ss.option(form.Flag, 'bypass_cn_traffic', _('Bypass CN traffic'),
 			_('Optional firewall fast path for mainland China IP addresses. It is enabled only when the default outbound is Direct, gaming mode is not configured, and every enabled rule uses only non-China GeoSite rule sets; otherwise it is ignored to avoid bypassing proxy rules.'));

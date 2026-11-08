@@ -5,7 +5,7 @@
 | 分析日期 | 2026-11-07 |
 | 代码基线 | `master` @ `46ce8bf`（修复前基线） |
 | 分析范围 | 简洁模式的 DNS、路由、出站组、规则集下载及 nftables 接管路径 |
-| 文档状态 | 2026-11-07 已按方案完成代码修复；第 2 节保留修复前分析，第 7 节记录实现状态 |
+| 文档状态 | 2026-11-07 已按方案完成代码修复；第 2 节保留修复前分析，第 7 节记录实现状态，第 8 节记录免重新打包更新方式 |
 
 > 第 2 节中的行号与行为描述以 `46ce8bf` 为准；当前实现请结合第 7 节和最新源码阅读。真机 A/B 测速仍需在实际 OpenWrt 设备上执行。
 
@@ -319,3 +319,160 @@ curl -o /dev/null -sS \
 - `direct_list.txt` 未在简洁模式自动生效，避免旧域名列表静默改变用户当前策略；如需支持，应另行设计显式导入。
 - 大陆快速路径使用静态 `china_ip4.txt` / `china_ip6.txt`，与远程 GeoSite 规则集口径不同。它受保守规则校验保护且默认关闭；只要有自定义域名、IP、自定义规则集或可能包含中国目标的规则集，就会自动忽略该开关。
 - 真机 `sing-box check`、生成 JSON 字段核对和第 5 节的冷/热 DNS A/B 测试仍需在 OpenWrt 设备上执行；静态代码修复不能代替实测性能结论。
+
+---
+
+## 8. 免重新打包更新到 OpenWrt 设备
+
+本节用于把当前工作区的修复直接同步到已安装 HomeProxy 的设备，无需重新构建 ipk。以下命令在本机执行，按实际情况替换 `ROUTER`。
+
+### 8.1 必须使用 `scp -O`，不要使用普通 `scp`
+
+新版 OpenSSH（9.0+，含当前 macOS 自带 `scp`）默认使用 SFTP 子协议。很多 OpenWrt / Dropbear 环境没有 `/usr/libexec/sftp-server`，普通 `scp` 会出现：
+
+```text
+ash: line 0: /usr/libexec/sftp-server: not found
+scp: Connection closed
+```
+
+解决方法是给所有 `scp` 增加大写字母 `-O`，强制使用旧版 SCP 协议：
+
+```sh
+scp -O ...
+```
+
+注意：
+
+- `-O` 是大写字母 O，不是小写 `-o`；小写表示传递 ssh 配置选项。
+- 不需要在路由器上安装 `sftp-server`。
+- 本机可用 `scp -O` 查看 usage 来确认支持该参数；不支持时改用 8.5 的 `tar` 方案。
+- 每条 `scp` / `ssh` 都可能要求一次密码，多次提示是正常的。
+
+### 8.2 路径映射
+
+打包脚本 `.github/build-ipk.sh` 使用以下映射：
+
+| 工作区路径 | 设备路径 |
+| --- | --- |
+| `htdocs/luci-static/resources/...` | `/www/luci-static/resources/...` |
+| `root/etc/homeproxy/scripts/...` | `/etc/homeproxy/scripts/...` |
+| `root/etc/init.d/homeproxy` | `/etc/init.d/homeproxy` |
+| `po/zh_Hans/homeproxy.po` | 需先由 `po2lmo` 编译为 `/usr/lib/lua/luci/i18n/homeproxy.zh-cn.lmo` |
+
+`docs/*.md`、`po/templates/homeproxy.pot` 不参与运行时，不需要复制。
+
+> 不要直接覆盖 `/etc/config/homeproxy`：这是用户配置，覆盖会丢失节点、规则和现有选项。新增字段由 `migrate_config.uc` 补齐。
+
+### 8.3 设备已应用主要修复，只需更新 LuCI 前端时
+
+例如只应用「Automatic 选项允许为空、表单可保存」这类前端修复：
+
+```sh
+SRC=/Users/chenrongxiong/GitHub/homeproxy
+ROUTER=root@192.168.6.1
+
+scp -O "$SRC/htdocs/luci-static/resources/view/homeproxy/client.js" \
+    "$ROUTER:/www/luci-static/resources/view/homeproxy/client.js"
+
+ssh "$ROUTER" 'chmod 644 /www/luci-static/resources/view/homeproxy/client.js'
+```
+
+随后强制刷新浏览器缓存（`Cmd/Ctrl + Shift + R`）。必要时可执行：
+
+```sh
+ssh "$ROUTER" '/etc/init.d/uhttpd restart'
+```
+
+这种情况不需要执行 UCI 迁移，也不需要重启 HomeProxy。
+
+### 8.4 设备仍是旧版时，同步全部运行文件
+
+```sh
+SRC=/Users/chenrongxiong/GitHub/homeproxy
+ROUTER=root@192.168.6.1
+
+scp -O "$SRC/htdocs/luci-static/resources/view/homeproxy/client.js" \
+    "$ROUTER:/www/luci-static/resources/view/homeproxy/client.js"
+
+scp -O \
+    "$SRC/root/etc/homeproxy/scripts/generate_client.uc" \
+    "$SRC/root/etc/homeproxy/scripts/firewall_post.ut" \
+    "$SRC/root/etc/homeproxy/scripts/migrate_config.uc" \
+    "$ROUTER:/etc/homeproxy/scripts/"
+
+scp -O "$SRC/root/etc/init.d/homeproxy" \
+    "$ROUTER:/etc/init.d/homeproxy"
+
+ssh "$ROUTER" '
+chmod 644 /www/luci-static/resources/view/homeproxy/client.js
+chmod 755 /etc/init.d/homeproxy /etc/homeproxy/scripts/*.uc /etc/homeproxy/scripts/*.ut
+ucode /etc/homeproxy/scripts/migrate_config.uc
+/etc/init.d/homeproxy restart
+/etc/init.d/dnsmasq restart
+'
+```
+
+同步的是**当前工作区文件**，不要只复制某个旧 commit 的快照；未提交的前端保存修复也包含在工作区文件中。
+
+中文翻译是可选的。路由器上存在 `po2lmo` 时可执行：
+
+```sh
+scp -O "$SRC/po/zh_Hans/homeproxy.po" "$ROUTER:/tmp/homeproxy.po"
+
+ssh "$ROUTER" '
+command -v po2lmo >/dev/null || exit 0
+po2lmo /tmp/homeproxy.po /usr/lib/lua/luci/i18n/homeproxy.zh-cn.lmo
+chmod 644 /usr/lib/lua/luci/i18n/homeproxy.zh-cn.lmo
+rm -f /tmp/homeproxy.po
+/etc/init.d/uhttpd restart
+'
+```
+
+没有 `po2lmo` 时可以跳过；功能不受影响，但新增或修改的文案可能暂时显示英文。
+
+### 8.5 只想输入一次密码的替代方案
+
+不依赖 SFTP、SCP 的稳妥方式是用 `tar` 通过一次 SSH 连接传输所有文件：
+
+```sh
+SRC=/Users/chenrongxiong/GitHub/homeproxy
+ROUTER=root@192.168.6.1
+TMP=$(mktemp -d)
+
+mkdir -p "$TMP/www/luci-static/resources/view/homeproxy" \
+         "$TMP/etc/homeproxy/scripts" "$TMP/etc/init.d"
+
+cp "$SRC/htdocs/luci-static/resources/view/homeproxy/client.js" \
+   "$TMP/www/luci-static/resources/view/homeproxy/client.js"
+cp "$SRC/root/etc/homeproxy/scripts/generate_client.uc" \
+   "$SRC/root/etc/homeproxy/scripts/firewall_post.ut" \
+   "$SRC/root/etc/homeproxy/scripts/migrate_config.uc" \
+   "$TMP/etc/homeproxy/scripts/"
+cp "$SRC/root/etc/init.d/homeproxy" "$TMP/etc/init.d/homeproxy"
+
+tar -C "$TMP" -cf - www etc | ssh "$ROUTER" '
+tar -C / -xf - &&
+chmod 644 /www/luci-static/resources/view/homeproxy/client.js &&
+chmod 755 /etc/init.d/homeproxy /etc/homeproxy/scripts/*.uc /etc/homeproxy/scripts/*.ut &&
+ucode /etc/homeproxy/scripts/migrate_config.uc &&
+/etc/init.d/homeproxy restart &&
+/etc/init.d/dnsmasq restart
+'
+
+rm -rf "$TMP"
+```
+
+### 8.6 更新后验证
+
+```sh
+ssh "$ROUTER" '
+uci show homeproxy.simple
+uci show homeproxy.migration
+sing-box check --config /var/run/homeproxy/sing-box-c.json
+logread -e homeproxy | tail -n 50
+'
+```
+
+然后在 LuCI 保存一次表单，确认 Automatic 可以保存，并强制刷新浏览器缓存。
+
+> 手动覆盖的文件会在以后通过 `opkg` / `apk` 升级 HomeProxy 包时被覆盖；正式发布时应重新打包，或在每次升级后重新执行本节同步步骤。
