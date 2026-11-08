@@ -296,6 +296,7 @@ const simple_defaults = {
 	china_dns_server: '223.5.5.5',
 	health_check_url: 'https://www.gstatic.com/generate_204',
 	health_check_interval: '180',
+	failback_tolerance: '30000',
 	ruleset_url_base: 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo',
 	ruleset_download_detour: '',
 	remote_dns_detour: '',

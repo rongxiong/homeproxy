@@ -33,5 +33,9 @@ else
 	rc=$?
 fi
 
-echo "$rc" > "$status_file"
+# Publish the result atomically: the view may poll while this runs and must
+# never observe a truncated (empty) status file.
+echo "$rc" > "$status_file.tmp"
+mv -f "$status_file.tmp" "$status_file"
+
 exit "$rc"

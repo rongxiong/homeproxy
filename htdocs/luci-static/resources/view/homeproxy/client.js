@@ -384,7 +384,7 @@ return view.extend({
 		}
 
 		so = ss.option(form.Value, 'health_check_url', _('Health check URL'),
-			_('Used to test node availability. The first available node in the configured order is used; a failed node is skipped until it passes a later check.'));
+			_('Used to test node availability. By default the first healthy node in the configured order is selected and kept until it fails; lowering the failback tolerance also allows switching to a faster node.'));
 		so.placeholder = 'https://www.gstatic.com/generate_204';
 		so.validate = function(section_id, value) {
 			if (section_id && value && !isValidHttpURL(value))
@@ -394,12 +394,24 @@ return view.extend({
 		}
 
 		so = ss.option(form.Value, 'health_check_interval', _('Health check interval'),
-			_('In seconds. A failed primary node is re-evaluated on the next check; failback is therefore not instantaneous.'));
+			_('In seconds. A failed node is re-evaluated on the next check; use the failback tolerance below to also switch back to a recovered primary.'));
 		so.datatype = 'uinteger';
 		so.placeholder = '180';
 		so.validate = function(section_id, value) {
 			if (section_id && value && (parseInt(value) < 10 || parseInt(value) > 1800))
 				return _('Expecting: %s').format(_('a value between 10 and 1800'));
+
+			return true;
+		}
+
+		so = ss.option(form.Value, 'failback_tolerance', _('Failback tolerance'),
+			_('In milliseconds. The default 30000 keeps the current node until it fails, so a recovered primary is not reselected automatically. Lower it, e.g. to 50, to let a node that is faster by more than this value take over, including a recovered primary. Small values may cause frequent switches and interrupt existing connections.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '30000';
+		so.default = '30000';
+		so.validate = function(section_id, value) {
+			if (section_id && value && (parseInt(value) < 1 || parseInt(value) > 30000))
+				return _('Expecting: %s').format(_('a value between 1 and 30000'));
 
 			return true;
 		}
@@ -550,8 +562,9 @@ return view.extend({
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.editable = true;
-		/* Dangling references are dropped by the generator, so do not block
-		 * saving the whole form just because a node was deleted meanwhile. */
+		/* The generator repairs dangling references (promotes a fallback or
+		 * fails closed), so do not block saving the whole form just because a
+		 * node was deleted meanwhile. */
 		so.validate = function(section_id, value) {
 			if (section_id && !value)
 				return _('Expecting: %s').format(_('non-empty value'));
@@ -560,7 +573,7 @@ return view.extend({
 		}
 
 		so = ss.option(hp.CBIStaticList, 'fallback_nodes', _('Fallback nodes'),
-			_('Ordered fallback nodes. The next one is used only when the previous one fails the health check.'));
+			_('Ordered fallback nodes. The next one is used when the previous one fails the health check; lowering the failback tolerance also allows switching back to a faster node.'));
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.modalonly = true;

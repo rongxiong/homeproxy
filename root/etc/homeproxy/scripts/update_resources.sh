@@ -61,11 +61,18 @@ check_list_update() {
 
 # Serialize updates across all resource types and all callers (web UI and
 # cron). Queuing here is cheap because the caller is detached from rpcd.
+# BusyBox flock (the OpenWrt default) only supports -s/-x/-n/-u, not the
+# util-linux -w wait option, so poll for the lock instead.
 exec 9>"$RUN_DIR/update_resources.lock"
-if ! flock -w 120 9; then
-	log "[$(to_upper "$1")] A task is already running."
-	exit 2
-fi
+lock_wait=0
+until flock -n 9 2>"/dev/null"; do
+	lock_wait=$((lock_wait + 1))
+	if [ "$lock_wait" -ge 120 ]; then
+		log "[$(to_upper "$1")] A task is already running."
+		exit 2
+	fi
+	sleep 1
+done
 
 case "$1" in
 "china_ip4")

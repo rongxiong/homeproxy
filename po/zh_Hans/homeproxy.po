@@ -3168,8 +3168,8 @@ msgid "IP / CIDR"
 msgstr "IP / CIDR"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "In seconds. A failed primary node is re-evaluated on the next check; failback is therefore not instantaneous."
-msgstr "单位为秒。故障主节点会在下一次检查时重新评估，因此不会立即切回。"
+msgid "In seconds. A failed node is re-evaluated on the next check; use the failback tolerance below to also switch back to a recovered primary."
+msgstr "单位为秒。故障节点会在下一次检查时重新评估；如需在恢复后切回主节点，请设置下方的回切容差。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Node used to download remote rule sets. Automatic reuses the first routing outbound and its fallback nodes; Direct downloads without a proxy. This option no longer controls DNS."
@@ -3184,8 +3184,8 @@ msgid "Optional firewall fast path for mainland China IP addresses. It is enable
 msgstr "可选的中国大陆 IP 防火墙快速路径。仅当默认出站为直连、未配置 gaming mode 且所有启用规则只使用非中国 GeoSite 规则集时才会生效；否则会被忽略，以免绕过代理规则。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Ordered fallback nodes. The next one is used only when the previous one fails the health check."
-msgstr "按先后顺序排列的备用节点。只有前一个节点健康检查失败时才会使用下一个。"
+msgid "Ordered fallback nodes. The next one is used when the previous one fails the health check; lowering the failback tolerance also allows switching back to a faster node."
+msgstr "按先后顺序排列的备用节点。前一个节点健康检查失败时依次向下切换；调小回切容差后，也允许切回更快的节点。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Outbound for traffic not matched by any routing rule below. Direct does not automatically proxy non-China traffic; add explicit rules for a bypass-mainland-China policy."
@@ -3224,8 +3224,8 @@ msgid "Automatic"
 msgstr "自动"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Used to test node availability. The first available node in the configured order is used; a failed node is skipped until it passes a later check."
-msgstr "用于检测节点可用性。按配置顺序使用第一个可用节点；故障节点会被跳过，直到后续检测通过。"
+msgid "Used to test node availability. By default the first healthy node in the configured order is selected and kept until it fails; lowering the failback tolerance also allows switching to a faster node."
+msgstr "用于检测节点可用性。默认按配置顺序选择第一个健康的节点并一直使用到它故障；调小回切容差后，也允许切换到更快的节点。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "a value between 10 and 1800"
@@ -3270,3 +3270,15 @@ msgstr "乐观 DNS 缓存"
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Return expired cached answers immediately and refresh them in the background (requires sing-box 1.14+, default stale window: 3 days). This reduces lookup latency, but CDN or node changes may briefly keep using stale addresses."
 msgstr "立即返回已过期的缓存结果并在后台刷新（需要 sing-box 1.14+，默认陈旧窗口为 3 天）。可降低解析延迟，但 CDN 或节点变化后可能短暂继续使用旧地址。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Failback tolerance"
+msgstr "回切容差"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "In milliseconds. The default 30000 keeps the current node until it fails, so a recovered primary is not reselected automatically. Lower it, e.g. to 50, to let a node that is faster by more than this value take over, including a recovered primary. Small values may cause frequent switches and interrupt existing connections."
+msgstr "单位为毫秒。默认 30000 会一直使用当前节点直到其故障，因此恢复的主节点不会自动被重新选中。调小（例如 50）后，延迟比当前节点低超过该值的节点（包括已恢复的主节点）会重新接管。数值越小切换越频繁，可能中断已有连接。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a value between 1 and 30000"
+msgstr "1 到 30000 之间的数值"

@@ -438,10 +438,10 @@ function simple_track_node(ctx, name) {
 
 	const node = uci.get_all(uciconfig, name) || {};
 	/* A node deleted from the node page or removed by a subscription update
-	 * leaves a dangling reference. Log it and drop the row instead of
-	 * emitting an outbound that cannot be resolved. */
+	 * leaves a dangling reference. Callers promote a fallback or fail closed;
+	 * never emit an outbound that cannot be resolved. */
 	if (isEmpty(node.type)) {
-		simple_log(sprintf('Simple routing: node %s is missing, dropping reference.', name));
+		simple_log(sprintf('Simple routing: node %s is missing.', name));
 		return null;
 	}
 
@@ -582,6 +582,7 @@ const simple = (routing_mode === 'simple') ? {
 	bypass_cn_effective: false,
 	health_url: 'https://www.gstatic.com/generate_204',
 	health_interval: null,
+	health_tolerance: 30000,
 	update_interval: '1d',
 	dns_cache_size: '4096',
 	dns_optimistic: '0'
@@ -597,6 +598,15 @@ if (simple) {
 	simple.bypass_cn_traffic = simple_cfg.bypass_cn_traffic || '0';
 	simple.health_url = simple_cfg.health_check_url || 'https://www.gstatic.com/generate_204';
 	simple.health_interval = strToTime(simple_cfg.health_check_interval || '180');
+	/* 30000 keeps the selected node until it fails (no automatic failback).
+	 * A smaller value lets a recovered, faster primary take over again.
+	 * Clamp to stay well below the uint16 delay sing-box adds this to. */
+	let failback_tolerance = strToInt(simple_cfg.failback_tolerance);
+	/* strToInt() yields NaN for non-numeric input, which is truthy in ucode,
+	 * so test the type as well instead of relying on a truthiness check. */
+	if (type(failback_tolerance) !== 'int' || failback_tolerance < 1 || failback_tolerance > 30000)
+		failback_tolerance = 30000;
+	simple.health_tolerance = failback_tolerance;
 	simple.update_interval = simple_cfg.ruleset_update_interval || '1d';
 	simple.dns_cache_size = simple_cfg.dns_cache_size || '4096';
 	simple.dns_optimistic = simple_cfg.dns_optimistic || '0';
@@ -609,10 +619,7 @@ if (simple) {
 		if (rule.enabled !== '1')
 			return;
 
-		const primary = simple_track_node(simple, rule.node);
-		if (!primary)
-			return;
-
+		let primary = simple_track_node(simple, rule.node);
 		let fallbacks = [];
 		for (let f in simple_array(rule.fallback_nodes)) {
 			const fb = simple_track_node(simple, f);
@@ -675,15 +682,37 @@ if (simple) {
 		/* A logical "or" rule is required: fields inside a plain route rule
 		 * are combined with AND, which would almost never match. */
 		if (length(conditions)) {
-			const group = simple_add_group(simple, primary, fallbacks);
+			let group = null;
+			let blocked = false;
+
+			if (primary) {
+				group = simple_add_group(simple, primary, fallbacks);
+			} else if (length(fallbacks)) {
+				/* A deleted primary must not discard the whole row: that would
+				 * let its domains, IPs and rule sets fall through to the
+				 * default outbound even though a healthy fallback exists. */
+				primary = fallbacks[0];
+				group = simple_add_group(simple, primary, fallbacks);
+				simple_log(sprintf('Simple routing: rule %s lost its primary node, promoting %s.',
+					rule['.name'], primary));
+			} else {
+				/* No usable node at all: fail closed instead of silently
+				 * letting this traffic go direct. block-out always exists. */
+				group = 'block-out';
+				blocked = true;
+				simple_log(sprintf('Simple routing: rule %s has no valid node, blocking its traffic.',
+					rule['.name']));
+			}
+
 			push(simple.rules, {
 				group: group,
 				conditions: conditions,
-				dns_conditions: dns_conditions,
+				/* A blocked rule cannot resolve DNS through block-out. */
+				dns_conditions: blocked ? [] : dns_conditions,
 				fast_path_safe: fast_path_safe,
 				fast_path_reason: fast_path_reason
 			});
-			if (length(dns_conditions))
+			if (!blocked && length(dns_conditions))
 				simple.dns_rule_count = simple.dns_rule_count + 1;
 		}
 	});
@@ -695,6 +724,11 @@ if (simple) {
 	else if (simple_track_node(simple, final_node)) {
 		simple.final = simple_node_tag(final_node);
 		simple_track_outbound(simple, simple.final);
+	} else {
+		/* The user explicitly asked for a proxy default. Never fail open to
+		 * direct when that node has been deleted by a subscription update. */
+		simple.final = 'block-out';
+		simple_log(sprintf('Simple routing: default outbound %s is missing, blocking unmatched traffic.', final_node));
 	}
 	simple.default_proxy = true;
 	if (simple.final in ['direct-out', 'block-out'])
@@ -1237,8 +1271,7 @@ if (!isEmpty(main_node)) {
 			outbounds: map(g.nodes, (n) => simple_node_tag(n)),
 			url: simple.health_url,
 			interval: simple.health_interval,
-			/* Keep well below 65535: sing-box adds this to a uint16 delay. */
-			tolerance: 30000,
+			tolerance: simple.health_tolerance,
 			interrupt_exist_connections: true
 		});
 	}
@@ -1432,14 +1465,24 @@ if (!isEmpty(main_node)) {
 		strategy: (ipv6_support !== '1') ? 'prefer_ipv4' : null
 	};
 
-	for (let r in simple.rules)
-		push(config.route.rules, {
+	for (let r in simple.rules) {
+		const route_rule = {
 			type: 'logical',
 			mode: 'or',
-			rules: r.conditions,
-			action: 'route',
-			outbound: r.group
-		});
+			rules: r.conditions
+		};
+
+		/* A rule without any usable node must fail closed. Use the explicit
+		 * reject action instead of routing to the legacy block outbound. */
+		if (r.group === 'block-out') {
+			route_rule.action = 'reject';
+		} else {
+			route_rule.action = 'route';
+			route_rule.outbound = r.group;
+		}
+
+		push(config.route.rules, route_rule);
+	}
 
 	config.route.final = simple.final;
 

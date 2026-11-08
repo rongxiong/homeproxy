@@ -3098,7 +3098,7 @@ msgid "IP / CIDR"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "In seconds. A failed primary node is re-evaluated on the next check; failback is therefore not instantaneous."
+msgid "In seconds. A failed node is re-evaluated on the next check; use the failback tolerance below to also switch back to a recovered primary."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
@@ -3114,7 +3114,7 @@ msgid "Optional firewall fast path for mainland China IP addresses. It is enable
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Ordered fallback nodes. The next one is used only when the previous one fails the health check."
+msgid "Ordered fallback nodes. The next one is used when the previous one fails the health check; lowering the failback tolerance also allows switching back to a faster node."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
@@ -3154,7 +3154,7 @@ msgid "Automatic"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Used to test node availability. The first available node in the configured order is used; a failed node is skipped until it passes a later check."
+msgid "Used to test node availability. By default the first healthy node in the configured order is selected and kept until it fails; lowering the failback tolerance also allows switching to a faster node."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
@@ -3199,4 +3199,16 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Return expired cached answers immediately and refresh them in the background (requires sing-box 1.14+, default stale window: 3 days). This reduces lookup latency, but CDN or node changes may briefly keep using stale addresses."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "Failback tolerance"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "In milliseconds. The default 30000 keeps the current node until it fails, so a recovered primary is not reselected automatically. Lower it, e.g. to 50, to let a node that is faster by more than this value take over, including a recovered primary. Small values may cause frequent switches and interrupt existing connections."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js
+msgid "a value between 1 and 30000"
 msgstr ""
