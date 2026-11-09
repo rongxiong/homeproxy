@@ -104,10 +104,17 @@ function getResVersion(o, type) {
 	let button, version_el, status_el;
 	let statusPollFn = null, deadline = 0;
 
-	const refreshVersion = () => L.resolveDefault(callResVersion(type), {}).then((res) => {
-		version_el.style.setProperty('color', res.error ? 'red' : 'green');
-		dom.content(version_el, res.error ? 'not found' : (res.version || ''));
-	});
+	/* The version string itself is the source of truth. Do not rely on the
+	 * RPC error flag: the backend's file error state used to be sticky across
+	 * calls, which kept showing "not found" after a successful update. */
+	const showVersion = (res) => {
+		const version = res?.version || '';
+		version_el.style.setProperty('color', version ? 'green' : 'red');
+		dom.content(version_el, version || 'not found');
+	};
+
+	const refreshVersion = () => L.resolveDefault(callResVersion(type), {})
+		.then(showVersion);
 
 	const finishUpdate = (status) => {
 		if (statusPollFn) {
@@ -170,8 +177,7 @@ function getResVersion(o, type) {
 			'click': startUpdate
 		}, [ _('Check update') ]);
 
-		version_el = E('strong', { 'style': (res.error ? 'color:red' : 'color:green') },
-			[ res.error ? 'not found' : res.version ]);
+		version_el = E('strong', {}, '');
 
 		/* Update results are shown in place. Re-rendering the whole map would
 		 * re-register every log poll callback and issue another version RPC for
@@ -181,6 +187,8 @@ function getResVersion(o, type) {
 		o.default = E('div', { 'style': 'cbi-value-field' }, [
 			button, ' ', version_el, status_el
 		]);
+
+		showVersion(res);
 
 		/* A task started before a page reload keeps running in the background. */
 		if (res.updating) {

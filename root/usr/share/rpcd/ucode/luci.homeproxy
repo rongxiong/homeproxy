@@ -7,7 +7,7 @@
 
 'use strict';
 
-import { access, error, lstat, popen, readfile, writefile } from 'fs';
+import { access, lstat, popen, readfile, writefile } from 'fs';
 
 /* Kanged from ucode/luci */
 function shellquote(s) {
@@ -263,12 +263,16 @@ const methods = {
 			if (index(RES_TYPES, type) === -1)
 				return { version: null, error: 'illegal type' };
 
-			const version = trim(readfile(`${HP_DIR}/resources/${type}.ver`));
-			const version_error = error();
+			/* fs.error() is a sticky, VM-wide "last error" which is only
+			 * cleared when read. Any unrelated failed read (e.g. an absent
+			 * update status file after a reboot) would make a perfectly valid
+			 * version look missing. Judge it by the file content instead. */
+			const content = readfile(`${HP_DIR}/resources/${type}.ver`);
+			const version = content ? trim(content) : '';
 
 			return {
 				version: version,
-				error: version_error,
+				error: version === '' ? 'version file is empty or missing' : null,
 				updating: readResState(type).running
 			};
 		}
