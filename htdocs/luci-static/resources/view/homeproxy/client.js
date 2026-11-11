@@ -562,6 +562,24 @@ return view.extend({
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.editable = true;
+		so.width = '16em';
+		/* Some themes shrink a select inside a table cell down to the arrow,
+		 * hiding the selected node name. Keep a readable width and expose the
+		 * full label as a tooltip. */
+		so.renderWidget = function(/* ... */) {
+			let widget = form.ListValue.prototype.renderWidget.apply(this, arguments);
+			let select = widget?.matches?.('select.cbi-input-select') ? widget :
+				widget?.querySelector?.('select.cbi-input-select');
+			if (select) {
+				select.style.minWidth = '14em';
+				let updateTitle = () => {
+					select.title = select.options[select.selectedIndex]?.text || '';
+				};
+				updateTitle();
+				select.addEventListener('change', updateTitle);
+			}
+			return widget;
+		};
 		/* The generator repairs dangling references (promotes a fallback or
 		 * fails closed), so do not block saving the whole form just because a
 		 * node was deleted meanwhile. */

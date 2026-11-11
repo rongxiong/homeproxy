@@ -170,6 +170,22 @@ return baseclass.extend({
 		renderWidget: function(/* ... */) {
 			let dl = form.DynamicList.prototype.renderWidget.apply(this, arguments);
 			dl.querySelector('.add-item ul > li[data-value="-"]')?.remove();
+
+			/* DynamicList only greys out a choice when it is picked from the
+			 * dropdown. Values loaded from UCI are rendered as items directly,
+			 * so editing an existing section would leave them selectable. */
+			if (!this.allowduplicates) {
+				let values = [];
+				dl.querySelectorAll('.item > input[type="hidden"]').forEach((input) => {
+					values.push(input.value);
+				});
+
+				dl.querySelectorAll('.add-item ul > li[data-value]').forEach((li) => {
+					if (values.includes(li.getAttribute('data-value')))
+						li.setAttribute('unselectable', '');
+				});
+			}
+
 			return dl;
 		}
 	}),
