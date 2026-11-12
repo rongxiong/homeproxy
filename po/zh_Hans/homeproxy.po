@@ -3180,10 +3180,6 @@ msgid "How remote DNS is reached. Automatic aligns DNS with the matching data ou
 msgstr "远程 DNS 的访问方式。自动模式让 DNS 与匹配的数据出站保持一致；仅使用 WAN DNS 会停用远程 DNS 和国内 DNS 分流；直连会不经代理访问所配置的远程 DNS。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js
-msgid "Optional firewall fast path for mainland China IP addresses. It is enabled only when the default outbound is Direct, gaming mode is not configured, and every enabled rule uses only non-China GeoSite rule sets; otherwise it is ignored to avoid bypassing proxy rules."
-msgstr "可选的中国大陆 IP 防火墙快速路径。仅当默认出站为直连、未配置 gaming mode 且所有启用规则只使用非中国 GeoSite 规则集时才会生效；否则会被忽略，以免绕过代理规则。"
-
-#: htdocs/luci-static/resources/view/homeproxy/client.js
 msgid "Ordered fallback nodes. The next one is used when the previous one fails the health check; lowering the failback tolerance also allows switching back to a faster node."
 msgstr "按先后顺序排列的备用节点。前一个节点健康检查失败时依次向下切换；调小回切容差后，也允许切回更快的节点。"
 

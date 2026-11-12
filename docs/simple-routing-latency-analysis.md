@@ -91,7 +91,7 @@ nftables redirect / tproxy / tun
   → 目标服务器
 ```
 
-`firewall_post.ut:60-62` 明确说明这是有意设计：custom 和 simple 将所有路由决定交给 sing-box。因此它是架构开销，不应直接当作缺陷修复。
+`firewall_post.ut` 的注释说明：classic 主节点模式使用 nft 捷径，custom 可选开启大陆捷径，而 simple 始终把所有路由决定交给 sing-box。因此它是架构开销，不应直接当作缺陷修复。
 
 该路径必然比内核态提前放行增加处理环节，但对响应时间的影响取决于路由器 CPU、连接数和规则规模。高性能设备上可能不明显，低性能设备或高并发下更值得关注。
 
@@ -217,6 +217,8 @@ nftables redirect / tproxy / tun
 2. 若确有性能瓶颈，提供独立的“绕过大陆预设”，明确其规则约束，而不是改变任意简洁配置的语义；
 3. 只有在能够证明不存在会被提前放行覆盖的代理规则时，才考虑开放可选快速路径。
 
+> 最终决定（2026-11-12）：不实现该快速路径，见第 7 节。简洁模式的全部流量交 sing-box 规则处理，需要国内直连时由内置直连节点表达。
+
 ### 4.6 P2：补充冷启动可观测性
 
 在现有日志中增加以下信息：
@@ -282,7 +284,7 @@ curl -o /dev/null -sS \
 - 冷 DNS 的直连网站 TTFB 相较修复前改善，且差异不只出现在单次测试中；
 - 热 DNS 下没有引入新的明显回退；
 - 单节点、无节点、规则集失败和旧配置迁移场景均可正常启动和解析；
-- 若启用任何内核快速路径，必须通过“大陆 IP 仍需代理”的反向用例，证明没有绕过用户规则。
+- 内核快速路径最终未启用（见第 7 节）；若未来重新引入，必须通过“大陆 IP 仍需代理”的反向用例，证明没有绕过用户规则。
 
 ## 6. 推荐实施顺序
 
@@ -290,7 +292,7 @@ curl -o /dev/null -sS \
 2. **第一阶段**：修复默认直连时的 DNS final，并为代理域名生成对应 DNS 规则；
 3. **第二阶段**：拆分下载与 DNS 配置，补齐国内 DNS 回退和升级迁移；
 4. **第三阶段**：优化单节点 URLTest，补充冷启动日志；
-5. **最后评估**：只有在 DNS 修复后仍能测出明显用户态直连开销时，才评估大陆 IP 快速路径或独立绕过大陆预设。
+5. **最后评估**：评估结论是不启用大陆 IP 快速路径；改为由内置直连节点 + sing-box 规则表达国内直连策略（见第 7 节）。
 
 这样可以用最小行为变更先解决最符合现象的瓶颈，同时避免为了性能牺牲简洁模式的规则正确性。
 
@@ -305,19 +307,19 @@ curl -o /dev/null -sS \
 | 旧配置迁移 | 已完成 | 新增一次性 `migration.simple_dns_split`；旧 Automatic 采用新 Auto，旧显式节点复制到新字段，旧 Direct 转为 WAN DNS only |
 | 4.3 国内 DNS 回退 | 已完成 | 加入 `geolocation-cn`、`geolocation-!cn` 取反与 `geoip/cn` 组合回退；代理域名 DNS 规则排在前面 |
 | 4.4 单节点 URLTest | 已完成 | 单节点规则直接引用节点出站；多节点规则保留 URLTest 与有序故障转移 |
-| 4.5 大陆 IP 快速路径 | 已完成（默认关闭） | 新增 `simple.bypass_cn_traffic`。生成器仅在默认出站为 Direct、未配置 gaming mode 且所有启用规则只使用非中国 GeoSite 规则集时写入允许状态；状态文件在 `sing-box-c.json` 成功后写入，避免旧配置搭配新状态 |
-| 4.6 冷启动可观测性 | 已完成 | `homeproxy.log` 记录规则集排队与下载出站、DNS final、代理 DNS 规则数、国内分流状态、URLTest 组数和快速路径启用/忽略原因 |
+| 4.5 大陆 IP 快速路径 | 已移除 | 简洁模式删除 `simple.bypass_cn_traffic`、生成器状态文件与 nft 层中国 IP 提前放行；所有被接管的流量都进入 sing-box，由分流规则决定去向。需要国内流量直连时，可在规则中显式选用内置的直连节点 |
+| 4.6 冷启动可观测性 | 已完成 | `homeproxy.log` 记录规则集排队与下载出站、DNS final、代理 DNS 规则数、国内分流状态与 URLTest 组数 |
 | UI、默认配置与 i18n | 已完成 | 新选项和提示已加入 LuCI、UCI 默认值、迁移脚本及中英文词条；默认出站说明明确“简洁模式不等于绕过大陆” |
 
 实现约束与剩余工作：
 
 - 规则集的实际下载成功/失败仍由 sing-box 在运行时写入 `sing-box-c.log`；生成器只能记录请求、URL 和出站，不能在不接入 sing-box 日志的情况下给出每次下载的准确完成耗时。
-- 快速路径状态文件只在 `sing-box-c.json` 成功后写入；`init.d` 会检查生成器退出码，并在生成或校验失败时删除状态文件。
-- 配置 gaming mode 时生成器自动禁用快速路径，避免内核提前放行绕过 gaming mode 设备策略。
-- 规则集下载的 Automatic 复用第一个分流出站；若该出站是多节点 URLTest 组，则保留 fallback 顺序，优先保证下载可用性。
+- 简洁模式不再有跨进程状态文件：`simple-bypass-cn` 的生成器写入、防火墙读取与 `init.d` 清理均已删除，生成器与防火墙之间不再有隐式运行时依赖。
+- 内置直连节点（`config node 'builtin_direct'`，`type=direct`）可作为规则主节点、备用节点或默认出站；指向纯直连节点的规则不生成代理 DNS，规则集下载的 Automatic 会跳过纯直连出站。
+- 规则集下载的 Automatic 复用第一个代理分流出站；若该出站是多节点 URLTest 组，则保留 fallback 顺序，优先保证下载可用性。
 - 明确为 GeoIP 的自定义规则集不会生成 DNS 条件；完整 URL 若无法识别为 GeoSite，也会跳过并记录日志，避免把 IP 规则集误用于域名解析。
 - `direct_list.txt` 未在简洁模式自动生效，避免旧域名列表静默改变用户当前策略；如需支持，应另行设计显式导入。
-- 大陆快速路径使用静态 `china_ip4.txt` / `china_ip6.txt`，与远程 GeoSite 规则集口径不同。它受保守规则校验保护且默认关闭；只要有自定义域名、IP、自定义规则集或可能包含中国目标的规则集，就会自动忽略该开关。
+- 大陆流量不再由静态 `china_ip4.txt` / `china_ip6.txt` 在内核态提前放行，口径与远程 GeoSite/GeoIP 规则集保持一致；代价是国内流量多一次用户态转发。
 - 真机 `sing-box check`、生成 JSON 字段核对和第 5 节的冷/热 DNS A/B 测试仍需在 OpenWrt 设备上执行；静态代码修复不能代替实测性能结论。
 
 ---
@@ -394,17 +396,21 @@ ROUTER=root@192.168.6.1
 scp -O "$SRC/htdocs/luci-static/resources/view/homeproxy/client.js" \
     "$ROUTER:/www/luci-static/resources/view/homeproxy/client.js"
 
+scp -O "$SRC/htdocs/luci-static/resources/homeproxy.js" \
+    "$ROUTER:/www/luci-static/resources/homeproxy.js"
+
 scp -O \
     "$SRC/root/etc/homeproxy/scripts/generate_client.uc" \
     "$SRC/root/etc/homeproxy/scripts/firewall_post.ut" \
     "$SRC/root/etc/homeproxy/scripts/migrate_config.uc" \
+    "$SRC/root/etc/homeproxy/scripts/update_subscriptions.uc" \
     "$ROUTER:/etc/homeproxy/scripts/"
 
 scp -O "$SRC/root/etc/init.d/homeproxy" \
     "$ROUTER:/etc/init.d/homeproxy"
 
 ssh "$ROUTER" '
-chmod 644 /www/luci-static/resources/view/homeproxy/client.js
+chmod 644 /www/luci-static/resources/view/homeproxy/client.js /www/luci-static/resources/homeproxy.js
 chmod 755 /etc/init.d/homeproxy /etc/homeproxy/scripts/*.uc /etc/homeproxy/scripts/*.ut
 ucode /etc/homeproxy/scripts/migrate_config.uc
 /etc/init.d/homeproxy restart
@@ -444,15 +450,18 @@ mkdir -p "$TMP/www/luci-static/resources/view/homeproxy" \
 
 cp "$SRC/htdocs/luci-static/resources/view/homeproxy/client.js" \
    "$TMP/www/luci-static/resources/view/homeproxy/client.js"
+cp "$SRC/htdocs/luci-static/resources/homeproxy.js" \
+   "$TMP/www/luci-static/resources/homeproxy.js"
 cp "$SRC/root/etc/homeproxy/scripts/generate_client.uc" \
    "$SRC/root/etc/homeproxy/scripts/firewall_post.ut" \
    "$SRC/root/etc/homeproxy/scripts/migrate_config.uc" \
+   "$SRC/root/etc/homeproxy/scripts/update_subscriptions.uc" \
    "$TMP/etc/homeproxy/scripts/"
 cp "$SRC/root/etc/init.d/homeproxy" "$TMP/etc/init.d/homeproxy"
 
 tar -C "$TMP" -cf - www etc | ssh "$ROUTER" '
 tar -C / -xf - &&
-chmod 644 /www/luci-static/resources/view/homeproxy/client.js &&
+chmod 644 /www/luci-static/resources/view/homeproxy/client.js /www/luci-static/resources/homeproxy.js &&
 chmod 755 /etc/init.d/homeproxy /etc/homeproxy/scripts/*.uc /etc/homeproxy/scripts/*.ut &&
 ucode /etc/homeproxy/scripts/migrate_config.uc &&
 /etc/init.d/homeproxy restart &&

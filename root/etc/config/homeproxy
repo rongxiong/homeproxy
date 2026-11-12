@@ -66,7 +66,6 @@ config homeproxy 'simple'
 	option ruleset_url_base 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo'
 	option ruleset_download_detour ''
 	option remote_dns_detour ''
-	option bypass_cn_traffic '0'
 	option ruleset_update_interval '1d'
 	option dns_cache_size '4096'
 	option dns_optimistic '0'
@@ -89,4 +88,9 @@ config homeproxy 'subscription'
 config homeproxy 'server'
 	option enabled '0'
 	option log_level 'warn'
+
+# Built-in direct outbound, selectable as a node in every routing mode.
+config node 'builtin_direct'
+	option type 'direct'
+	option label 'Direct'
 

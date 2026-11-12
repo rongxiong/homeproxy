@@ -450,11 +450,6 @@ return view.extend({
 		so.rmempty = true;
 		so.optional = true;
 
-		so = ss.option(form.Flag, 'bypass_cn_traffic', _('Bypass CN traffic'),
-			_('Optional firewall fast path for mainland China IP addresses. It is enabled only when the default outbound is Direct, gaming mode is not configured, and every enabled rule uses only non-China GeoSite rule sets; otherwise it is ignored to avoid bypassing proxy rules.'));
-		so.default = so.disabled;
-		so.rmempty = false;
-
 		so = ss.option(form.Value, 'ruleset_update_interval', _('Rule set update interval'),
 			_('How often remote rule sets are refreshed, e.g. 1d.'));
 		so.placeholder = '1d';

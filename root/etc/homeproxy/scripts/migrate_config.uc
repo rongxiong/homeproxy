@@ -300,7 +300,6 @@ const simple_defaults = {
 	ruleset_url_base: 'https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo',
 	ruleset_download_detour: '',
 	remote_dns_detour: '',
-	bypass_cn_traffic: '0',
 	ruleset_update_interval: '1d',
 	dns_cache_size: '4096',
 	dns_optimistic: '0'
@@ -309,10 +308,25 @@ for (let option in simple_defaults)
 	if (uci.get(uciconfig, ucisimple, option) == null)
 		uci.set(uciconfig, ucisimple, option, simple_defaults[option]);
 
+/* The guarded CN fast path was removed. Drop the stale option from older
+ * configurations so UCI no longer carries a flag nothing reads. */
+if (uci.get(uciconfig, ucisimple, 'bypass_cn_traffic') != null)
+	uci.delete(uciconfig, ucisimple, 'bypass_cn_traffic');
+
 uci.foreach(uciconfig, ucisimplerule, (cfg) => {
 	if (!cfg.enabled)
 		uci.set(uciconfig, cfg['.name'], 'enabled', '1');
 });
+
+/* /etc/config/homeproxy is a conffile, so upgrades keep the old file.
+ * Recreate the built-in direct node without touching a same-named section
+ * that already exists. Subscription updates leave it alone: it has no
+ * grouphash. */
+if (!uci.get(uciconfig, 'builtin_direct')) {
+	uci.set(uciconfig, 'builtin_direct', ucinode);
+	uci.set(uciconfig, 'builtin_direct', 'type', 'direct');
+	uci.set(uciconfig, 'builtin_direct', 'label', 'Direct');
+}
 
 if (!isEmpty(uci.changes(uciconfig)))
 	uci.commit(uciconfig);

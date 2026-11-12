@@ -603,7 +603,15 @@ function main() {
 	 * real node here, otherwise a subscription update would silently enable
 	 * proxying again. */
 	if (!isEmpty(main_node) && main_node !== 'nil') {
-		const first_server = uci.get_first(uciconfig, ucinode);
+		/* Never fall back to the built-in direct node (or any other direct
+		 * node): it would silently turn all traffic into direct connections
+		 * when a subscription update removes the current main node. */
+		let first_server = null;
+		uci.foreach(uciconfig, ucinode, (cfg) => {
+			if (isEmpty(first_server) &&
+			    uci.get(uciconfig, cfg['.name'], 'type') !== 'direct')
+				first_server = cfg['.name'];
+		});
 		if (first_server) {
 			let main_urltest_nodes;
 			if (main_node === 'urltest') {

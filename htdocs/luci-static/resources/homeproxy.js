@@ -25,8 +25,13 @@ return baseclass.extend({
 	 * Keys are "<category>/<name>" identifiers, expanded to download URLs
 	 * by generate_client.uc. Names are proper nouns and need no translation. */
 	simple_rule_sets: {
-		'geosite/geolocation-cn': 'GeoSite · geolocation-cn (China)',
+		/* These China domain sets have different scopes and do not fully
+		 * contain each other: cn is the broad list (tld-cn is a subset of
+		 * it), geolocation-cn is geography based. Select both for full
+		 * coverage of domestic domains. */
+		'geosite/geolocation-cn': 'GeoSite · geolocation-cn (China, by geography)',
 		'geosite/geolocation-!cn': 'GeoSite · geolocation-!cn (non-China)',
+		'geosite/cn': 'GeoSite · cn (China, broad)',
 		'geosite/gfw': 'GeoSite · gfw',
 		'geosite/private': 'GeoSite · private (LAN)',
 		'geosite/category-ads-all': 'GeoSite · category-ads-all',
@@ -54,6 +59,56 @@ return baseclass.extend({
 		'geosite/tiktok': 'GeoSite · tiktok',
 		'geosite/discord': 'GeoSite · discord',
 		'geosite/reddit': 'GeoSite · reddit',
+		/* Additional categories */
+		'geosite/category-porn': 'GeoSite · category-porn (adult)',
+		'geosite/category-finance': 'GeoSite · category-finance',
+		'geosite/category-entertainment': 'GeoSite · category-entertainment',
+		'geosite/category-cryptocurrency': 'GeoSite · category-cryptocurrency',
+		'geosite/category-speedtest': 'GeoSite · category-speedtest',
+		'geosite/tld-cn': 'GeoSite · tld-cn (China TLDs, included in cn)',
+		/* AI services */
+		'geosite/anthropic': 'GeoSite · anthropic (Claude)',
+		'geosite/huggingface': 'GeoSite · huggingface',
+		'geosite/deepseek': 'GeoSite · deepseek',
+		'geosite/perplexity': 'GeoSite · perplexity',
+		'geosite/xai': 'GeoSite · xai (Grok)',
+		/* Streaming and video */
+		'geosite/hbo': 'GeoSite · hbo (HBO Max)',
+		'geosite/primevideo': 'GeoSite · primevideo (Prime Video)',
+		'geosite/hulu': 'GeoSite · hulu',
+		'geosite/abema': 'GeoSite · abema (Japan)',
+		'geosite/niconico': 'GeoSite · niconico (Japan)',
+		'geosite/bahamut': 'GeoSite · bahamut (Taiwan)',
+		'geosite/twitch': 'GeoSite · twitch (live streaming)',
+		'geosite/dailymotion': 'GeoSite · dailymotion',
+		/* Messaging and social */
+		'geosite/whatsapp': 'GeoSite · whatsapp',
+		'geosite/signal': 'GeoSite · signal',
+		'geosite/line': 'GeoSite · line',
+		'geosite/messenger': 'GeoSite · messenger',
+		'geosite/linkedin': 'GeoSite · linkedin',
+		/* Game platforms */
+		'geosite/playstation': 'GeoSite · playstation',
+		'geosite/xbox': 'GeoSite · xbox',
+		'geosite/nintendo': 'GeoSite · nintendo',
+		'geosite/epicgames': 'GeoSite · epicgames',
+		'geosite/ea': 'GeoSite · ea (Electronic Arts)',
+		'geosite/blizzard': 'GeoSite · blizzard',
+		/* Cloud and development */
+		'geosite/cloudflare': 'GeoSite · cloudflare',
+		'geosite/docker': 'GeoSite · docker',
+		'geosite/aws': 'GeoSite · aws (Amazon Web Services)',
+		'geosite/gitlab': 'GeoSite · gitlab',
+		/* Payments */
+		'geosite/paypal': 'GeoSite · paypal',
+		'geosite/stripe': 'GeoSite · stripe',
+		/* Mainland China services */
+		'geosite/baidu': 'GeoSite · baidu',
+		'geosite/alibaba': 'GeoSite · alibaba',
+		'geosite/tencent': 'GeoSite · tencent',
+		'geosite/douyin': 'GeoSite · douyin (TikTok China)',
+		'geosite/iqiyi': 'GeoSite · iqiyi',
+		'geosite/youku': 'GeoSite · youku',
 		'geoip/cn': 'GeoIP · cn (China)',
 		'geoip/private': 'GeoIP · private (LAN)',
 		/* Service / provider IP sets: small and ideal for apps dialing IPs directly */
@@ -67,18 +122,25 @@ return baseclass.extend({
 		'geoip/tor': 'GeoIP · tor (Tor nodes)',
 		'geoip/twitter': 'GeoIP · twitter (X)',
 		/* Country / region IP sets */
+		'geoip/ae': 'GeoIP · ae',
 		'geoip/ar': 'GeoIP · ar',
+		'geoip/at': 'GeoIP · at',
 		'geoip/au': 'GeoIP · au',
+		'geoip/be': 'GeoIP · be',
 		'geoip/br': 'GeoIP · br',
 		'geoip/ca': 'GeoIP · ca',
 		'geoip/ch': 'GeoIP · ch',
+		'geoip/cz': 'GeoIP · cz',
 		'geoip/de': 'GeoIP · de',
+		'geoip/dk': 'GeoIP · dk',
 		'geoip/es': 'GeoIP · es',
 		'geoip/fi': 'GeoIP · fi',
 		'geoip/fr': 'GeoIP · fr',
 		'geoip/gb': 'GeoIP · gb',
 		'geoip/hk': 'GeoIP · hk',
 		'geoip/id': 'GeoIP · id',
+		'geoip/ie': 'GeoIP · ie',
+		'geoip/il': 'GeoIP · il',
 		'geoip/in': 'GeoIP · in',
 		'geoip/it': 'GeoIP · it',
 		'geoip/jp': 'GeoIP · jp',
@@ -90,7 +152,9 @@ return baseclass.extend({
 		'geoip/nz': 'GeoIP · nz',
 		'geoip/ph': 'GeoIP · ph',
 		'geoip/pl': 'GeoIP · pl',
+		'geoip/pt': 'GeoIP · pt',
 		'geoip/ru': 'GeoIP · ru',
+		'geoip/sa': 'GeoIP · sa',
 		'geoip/se': 'GeoIP · se',
 		'geoip/sg': 'GeoIP · sg',
 		'geoip/th': 'GeoIP · th',

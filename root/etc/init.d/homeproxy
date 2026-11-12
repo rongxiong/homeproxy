@@ -51,22 +51,18 @@ start_service() {
 	fi
 
 	mkdir -p "$RUN_DIR"
-	rm -f "$RUN_DIR/simple-bypass-cn"
 
 	if [ "$outbound_node" != "nil" ]; then
 		# Generate/Validate client config
 		if ! ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"; then
-			rm -f "$RUN_DIR/simple-bypass-cn"
 			log "Error: failed to generate client configuration."
 			return 1
 		fi
 
 		if [ ! -e "$RUN_DIR/sing-box-c.json" ]; then
-			rm -f "$RUN_DIR/simple-bypass-cn"
 			log "Error: failed to generate client configuration."
 			return 1
 		elif ! "$PROG" check --config "$RUN_DIR/sing-box-c.json" 2>>"$LOG_PATH"; then
-			rm -f "$RUN_DIR/simple-bypass-cn"
 			log "Error: wrong client configuration detected."
 			return 1
 		fi
@@ -340,7 +336,6 @@ stop_service() {
 	echo 2>"/dev/null" > "$RUN_DIR/fw4_forward.nft"
 	echo 2>"/dev/null" > "$RUN_DIR/fw4_input.nft"
 	echo 2>"/dev/null" > "$RUN_DIR/fw4_post.nft"
-	rm -f "$RUN_DIR/simple-bypass-cn"
 	fw4 reload >"/dev/null" 2>&1
 
 	# Remove DNS hijack

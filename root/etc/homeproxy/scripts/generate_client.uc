@@ -446,7 +446,15 @@ function simple_track_node(ctx, name) {
 	}
 
 	ctx.node_cfgs[name] = node;
+	if (node.type === 'direct')
+		ctx.direct_outbounds[simple_node_tag(name)] = true;
 	return name;
+}
+
+/* Only a direct node's own outbound is registered above. URLTest group tags
+ * never are, so a row that mixes direct and proxy nodes keeps proxy DNS. */
+function simple_is_direct_outbound(ctx, tag) {
+	return ctx.direct_outbounds[tag] === true;
 }
 
 function simple_track_outbound(ctx, tag) {
@@ -540,23 +548,6 @@ function simple_add_dns_server(ctx, sb_config, detour) {
 	return tag;
 }
 
-function simple_bypass_cn_reason(ctx) {
-	if (ctx.bypass_cn_traffic !== '1')
-		return 'disabled by configuration';
-	if (ctx.final !== 'direct-out')
-		return 'default outbound is not direct';
-	if (!isEmpty(uci.get(uciconfig, ucicontrol, 'lan_gaming_mode_ipv4_ips')) ||
-	    !isEmpty(uci.get(uciconfig, ucicontrol, 'lan_gaming_mode_ipv6_ips')) ||
-	    !isEmpty(uci.get(uciconfig, ucicontrol, 'lan_gaming_mode_mac_addrs')))
-		return 'gaming mode is configured';
-
-	for (let r in ctx.rules)
-		if (!r.fast_path_safe)
-			return r.fast_path_reason || 'a routing rule may match mainland China traffic';
-
-	return null;
-}
-
 const simple = (routing_mode === 'simple') ? {
 	groups: [],
 	group_tags: {},
@@ -578,8 +569,7 @@ const simple = (routing_mode === 'simple') ? {
 	remote_dns_used: false,
 	cn_dns_enabled: false,
 	dns_rule_count: 0,
-	bypass_cn_traffic: '0',
-	bypass_cn_effective: false,
+	direct_outbounds: {},
 	health_url: 'https://www.gstatic.com/generate_204',
 	health_interval: null,
 	health_tolerance: 30000,
@@ -595,7 +585,6 @@ if (simple) {
 
 	simple.dns_server = simple_cfg.dns_server;
 	simple.china_dns_server = simple_cfg.china_dns_server;
-	simple.bypass_cn_traffic = simple_cfg.bypass_cn_traffic || '0';
 	simple.health_url = simple_cfg.health_check_url || 'https://www.gstatic.com/generate_204';
 	simple.health_interval = strToTime(simple_cfg.health_check_interval || '180');
 	/* 30000 keeps the selected node until it fails (no automatic failback).
@@ -611,8 +600,7 @@ if (simple) {
 	simple.dns_cache_size = simple_cfg.dns_cache_size || '4096';
 	simple.dns_optimistic = simple_cfg.dns_optimistic || '0';
 
-	/* Ensure the log directory exists. The fast-path state is written only
-	 * after sing-box-c.json has been generated successfully. */
+	/* simple_log() writes into RUN_DIR before the JSON is emitted. */
 	system('mkdir -p ' + RUN_DIR);
 
 	uci.foreach(uciconfig, ucisimplerule, (rule) => {
@@ -628,7 +616,6 @@ if (simple) {
 		}
 
 		let conditions = [], dns_conditions = [];
-		let fast_path_safe = true, fast_path_reason = null;
 
 		const builtin_sets = simple_array(rule.rule_sets);
 		for (let ident in builtin_sets) {
@@ -639,18 +626,9 @@ if (simple) {
 			const dns_condition = simple_add_dns_ruleset(simple, base, ident);
 			if (dns_condition)
 				push(dns_conditions, dns_condition);
-
-			if (!(ident in ['geosite/geolocation-!cn', 'geosite/gfw'])) {
-				fast_path_safe = false;
-				fast_path_reason = 'a rule set may include mainland China destinations';
-			}
 		}
 
 		const custom_sets = simple_array(rule.rule_set_urls);
-		if (length(custom_sets)) {
-			fast_path_safe = false;
-			fast_path_reason = 'a custom rule set may include mainland China destinations';
-		}
 		for (let value in custom_sets) {
 			const tag = simple_add_ruleset(simple, base, value);
 			if (tag)
@@ -668,16 +646,11 @@ if (simple) {
 			push(conditions, { domain_suffix: domains });
 			push(dns_conditions, { domain: domains });
 			push(dns_conditions, { domain_suffix: domains });
-			fast_path_safe = false;
-			fast_path_reason = 'custom domains may resolve to mainland China addresses';
 		}
 
 		const ip_cidrs = simple_array(rule.ip_cidrs);
-		if (length(ip_cidrs)) {
+		if (length(ip_cidrs))
 			push(conditions, { ip_cidr: ip_cidrs });
-			fast_path_safe = false;
-			fast_path_reason = 'custom IP rules may include mainland China addresses';
-		}
 
 		/* A logical "or" rule is required: fields inside a plain route rule
 		 * are combined with AND, which would almost never match. */
@@ -704,15 +677,17 @@ if (simple) {
 					rule['.name']));
 			}
 
+			const direct_group = simple_is_direct_outbound(simple, group);
+
 			push(simple.rules, {
 				group: group,
 				conditions: conditions,
-				/* A blocked rule cannot resolve DNS through block-out. */
-				dns_conditions: blocked ? [] : dns_conditions,
-				fast_path_safe: fast_path_safe,
-				fast_path_reason: fast_path_reason
+				/* A blocked rule cannot resolve DNS through block-out. A rule
+				 * routed to a direct node keeps WAN/China DNS instead of
+				 * creating a proxy DNS server for it. */
+				dns_conditions: (blocked || direct_group) ? [] : dns_conditions
 			});
-			if (!blocked && length(dns_conditions))
+			if (!blocked && !direct_group && length(dns_conditions))
 				simple.dns_rule_count = simple.dns_rule_count + 1;
 		}
 	});
@@ -731,7 +706,7 @@ if (simple) {
 		simple_log(sprintf('Simple routing: default outbound %s is missing, blocking unmatched traffic.', final_node));
 	}
 	simple.default_proxy = true;
-	if (simple.final in ['direct-out', 'block-out'])
+	if (simple.final in ['direct-out', 'block-out'] || simple_is_direct_outbound(simple, simple.final))
 		simple.default_proxy = false;
 
 	/* Remote DNS is independent from rule set downloads. Empty means align
@@ -746,7 +721,8 @@ if (simple) {
 		simple_log(sprintf('Simple routing: remote DNS node %s is missing, using automatic DNS routing.', dns_node));
 
 	/* Rule sets are downloaded independently from DNS. Automatic reuses the
-	 * first routing outbound so a multi-node group keeps its fallback order. */
+	 * first proxy-capable routing outbound so a multi-node group keeps its
+	 * fallback order; a direct node cannot reliably fetch remote rule sets. */
 	const download_node = simple_cfg.ruleset_download_detour;
 	if (download_node === 'direct-out')
 		simple.download_detour = null;
@@ -755,10 +731,13 @@ if (simple) {
 	else {
 		if (!isEmpty(download_node))
 			simple_log(sprintf('Simple routing: download node %s is missing, using automatic selection.', download_node));
-		if (length(simple.route_outbounds))
-			simple.download_detour = simple.route_outbounds[0];
-		else if (length(keys(simple.node_cfgs)))
-			simple.download_detour = simple_node_tag(keys(simple.node_cfgs)[0]);
+		for (let tag in simple.route_outbounds)
+			if (isEmpty(simple.download_detour) && !simple_is_direct_outbound(simple, tag))
+				simple.download_detour = tag;
+		if (isEmpty(simple.download_detour))
+			for (let name in keys(simple.node_cfgs))
+				if (isEmpty(simple.download_detour) && !simple_is_direct_outbound(simple, simple_node_tag(name)))
+					simple.download_detour = simple_node_tag(name);
 	}
 
 	simple.remote_dns_used = (simple.remote_dns_detour !== 'wan') &&
@@ -773,14 +752,6 @@ if (simple) {
 		simple.geoip_cn_ruleset_tag = simple_add_ruleset(simple, base, 'geoip/cn');
 		simple.cn_dns_enabled = true;
 	}
-
-	/* The nftables fast path is only safe when no enabled rule can route a
-	 * mainland China destination through a proxy and the final route is direct. */
-	const bypass_reason = simple_bypass_cn_reason(simple);
-	simple.bypass_cn_effective = bypass_reason ? false : true;
-	simple_log(sprintf('Simple routing: CN firewall fast path %s (%s).',
-		simple.bypass_cn_effective ? 'enabled' : 'disabled',
-		bypass_reason || 'compatible rules'));
 }
 /* Simple routing translation end */
 
@@ -1227,7 +1198,8 @@ if (!isEmpty(main_node)) {
 				push(config.outbounds, generate_outbound(outbound));
 				config.outbounds[length(config.outbounds)-1].bind_interface = cfg.bind_interface;
 				config.outbounds[length(config.outbounds)-1].detour = get_outbound(cfg.outbound);
-				if (cfg.domain_resolver)
+				/* A direct outbound has no server address to resolve. */
+				if (cfg.domain_resolver && outbound.type !== 'direct')
 					config.outbounds[length(config.outbounds)-1].domain_resolver = {
 						server: get_resolver(cfg.domain_resolver),
 						strategy: cfg.domain_strategy
@@ -1256,7 +1228,9 @@ if (!isEmpty(main_node)) {
 		} else {
 			const outbound = generate_outbound(node);
 			outbound.tag = simple_node_tag(name);
-			outbound.domain_resolver = { server: 'default-dns' };
+			/* A direct outbound has no upstream server to resolve. */
+			if (node.type !== 'direct')
+				outbound.domain_resolver = { server: 'default-dns' };
 			push(config.outbounds, outbound);
 		}
 	}
@@ -1529,6 +1503,4 @@ if (routing_mode in ['bypass_mainland_china', 'custom', 'simple']) {
 /* Experimental end */
 
 system('mkdir -p ' + RUN_DIR);
-const client_config_written = writefile(RUN_DIR + '/sing-box-c.json', sprintf('%.J\n', removeBlankAttrs(config)));
-if (client_config_written && simple)
-	writefile(RUN_DIR + '/simple-bypass-cn', simple.bypass_cn_effective ? '1' : '0');
+writefile(RUN_DIR + '/sing-box-c.json', sprintf('%.J\n', removeBlankAttrs(config)));
