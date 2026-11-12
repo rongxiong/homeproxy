@@ -302,7 +302,7 @@ curl -o /dev/null -sS \
 
 | 方案 | 实现状态 | 说明 |
 | --- | --- | --- |
-| 4.1 DNS 与数据路径对齐 | 已完成 | 默认直连时未命中域名使用 WAN DNS；代理域名使用与数据相同的路由组解析；默认代理出站使用对应远程 DNS |
+| 4.1 DNS 与数据路径对齐 | 已完成 | DNS 规则与路由规则按同一行顺序、同一批域名条件生成：代理行用对应路由组的远程 DNS，直连行用本地/国内 DNS；默认出站直连用 WAN DNS，默认出站代理用对应远程 DNS |
 | 4.2 下载与 DNS 出站拆分 | 已完成 | 新增 `simple.remote_dns_detour`；`ruleset_download_detour` 仅控制规则集。支持 Automatic、WAN DNS only、Direct 和指定节点；Automatic 复用第一个分流出站及其 fallback |
 | 旧配置迁移 | 已完成 | 新增一次性 `migration.simple_dns_split`；旧 Automatic 采用新 Auto，旧显式节点复制到新字段，旧 Direct 转为 WAN DNS only |
 | 4.3 国内 DNS 回退 | 已完成 | 加入 `geolocation-cn`、`geolocation-!cn` 取反与 `geoip/cn` 组合回退；代理域名 DNS 规则排在前面 |
@@ -315,9 +315,9 @@ curl -o /dev/null -sS \
 
 - 规则集的实际下载成功/失败仍由 sing-box 在运行时写入 `sing-box-c.log`；生成器只能记录请求、URL 和出站，不能在不接入 sing-box 日志的情况下给出每次下载的准确完成耗时。
 - 简洁模式不再有跨进程状态文件：`simple-bypass-cn` 的生成器写入、防火墙读取与 `init.d` 清理均已删除，生成器与防火墙之间不再有隐式运行时依赖。
-- 内置直连节点（`config node 'builtin_direct'`，`type=direct`）可作为规则主节点、备用节点或默认出站；指向纯直连节点的规则不生成代理 DNS，规则集下载的 Automatic 会跳过纯直连出站。
+- 内置直连节点（`config node 'builtin_direct'`，`type=direct`）可作为规则主节点、备用节点或默认出站；指向纯直连节点的规则在 DNS 侧走本地 `default-dns` / `china-dns`，不会再落到可能是代理的 `dns.final`；规则集下载的 Automatic 会跳过纯直连出站。
 - 规则集下载的 Automatic 复用第一个代理分流出站；若该出站是多节点 URLTest 组，则保留 fallback 顺序，优先保证下载可用性。
-- 明确为 GeoIP 的自定义规则集不会生成 DNS 条件；完整 URL 若无法识别为 GeoSite，也会跳过并记录日志，避免把 IP 规则集误用于域名解析。
+- DNS 阶段拿不到目标 IP / 端口 / 协议，故 `geoip/*` 规则集、IP/CIDR 与端口条件不生成 DNS 条件；明确为 GeoIP 的自定义规则集会跳过并记录日志，避免把 IP 规则集误用于域名解析。这类规则的数据出站与 DNS 解析器可能不一致，属固有限制。
 - `direct_list.txt` 未在简洁模式自动生效，避免旧域名列表静默改变用户当前策略；如需支持，应另行设计显式导入。
 - 大陆流量不再由静态 `china_ip4.txt` / `china_ip6.txt` 在内核态提前放行，口径与远程 GeoSite/GeoIP 规则集保持一致；代价是国内流量多一次用户态转发。
 - 真机 `sing-box check`、生成 JSON 字段核对和第 5 节的冷/热 DNS A/B 测试仍需在 OpenWrt 设备上执行；静态代码修复不能代替实测性能结论。

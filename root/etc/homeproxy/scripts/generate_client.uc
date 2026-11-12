@@ -682,10 +682,10 @@ if (simple) {
 			push(simple.rules, {
 				group: group,
 				conditions: conditions,
-				/* A blocked rule cannot resolve DNS through block-out. A rule
-				 * routed to a direct node keeps WAN/China DNS instead of
-				 * creating a proxy DNS server for it. */
-				dns_conditions: (blocked || direct_group) ? [] : dns_conditions
+				/* DNS follows the same ordered row and the same domain
+				 * conditions as routing; the DNS stage then picks a resolver
+				 * matching this row's outbound. A blocked row has no resolver. */
+				dns_conditions: blocked ? [] : dns_conditions
 			});
 			if (!blocked && !direct_group && length(dns_conditions))
 				simple.dns_rule_count = simple.dns_rule_count + 1;
@@ -963,14 +963,35 @@ if (!isEmpty(main_node)) {
 		config.dns.cache_capacity = cache_capacity;
 	}
 
-	/* Proxy domains resolve through the same outbound that carries their data.
-	 * Unmatched direct traffic keeps the WAN resolver and therefore no longer
-	 * waits for an unrelated proxy DNS connection. */
+	/* Domestic DNS resolves over a direct connection so Chinese sites keep
+	 * their local CDN addresses. Define it before the per-row DNS rules. */
+	if (simple.cn_dns_enabled) {
+		let china_dns_addr = simple.china_dns_server;
+		if (china_dns_addr === 'wan')
+			china_dns_addr = wan_dns;
+
+		push(config.dns.servers, {
+			tag: 'china-dns',
+			domain_resolver: { server: 'default-dns' },
+			detour: self_mark ? 'direct-out' : null,
+			...parse_dnsserver(china_dns_addr)
+		});
+	}
+
+	/* DNS rules mirror the ordered routing rows and use the same domain
+	 * conditions, so a domain is resolved through a resolver matching the
+	 * outbound that carries its data: proxy rows use their own remote DNS,
+	 * direct rows resolve locally. GeoIP / IP CIDR conditions cannot be
+	 * evaluated at the DNS stage and are not part of dns_conditions. */
 	for (let r in simple.rules) {
 		if (!length(r.dns_conditions))
 			continue;
 
-		const dns_tag = simple_add_dns_server(simple, config, r.group);
+		let dns_tag;
+		if (simple_is_direct_outbound(simple, r.group))
+			dns_tag = simple.cn_dns_enabled ? 'china-dns' : 'default-dns';
+		else
+			dns_tag = simple_add_dns_server(simple, config, r.group);
 		if (!dns_tag)
 			continue;
 
@@ -990,20 +1011,10 @@ if (!isEmpty(main_node)) {
 			config.dns.final = final_dns;
 	}
 
-	/* Domestic domains use a direct DNS server so Chinese sites keep their
-	 * local CDN addresses. The GeoIP combination is a fallback for domains
-	 * missing from geolocation-cn; explicit proxy DNS rules take precedence. */
+	/* Fallback for domestic domains not covered by any row: keep the local
+	 * CDN address even when the default DNS final goes through a proxy.
+	 * Explicit per-row DNS rules above take precedence. */
 	if (simple.cn_dns_enabled) {
-		let china_dns_addr = simple.china_dns_server;
-		if (china_dns_addr === 'wan')
-			china_dns_addr = wan_dns;
-
-		push(config.dns.servers, {
-			tag: 'china-dns',
-			domain_resolver: { server: 'default-dns' },
-			detour: self_mark ? 'direct-out' : null,
-			...parse_dnsserver(china_dns_addr)
-		});
 		push(config.dns.rules, {
 			rule_set: simple.cn_ruleset_tag,
 			action: 'route',
