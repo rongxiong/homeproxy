@@ -527,6 +527,14 @@ return view.extend({
 		for (let i in hp.simple_rule_sets)
 			so.value(i, hp.simple_rule_sets[i]);
 		so.modalonly = true;
+		/* Keep the widget order as-is (new picks append at the bottom) and
+		 * only sort the values written to UCI when the form is saved. */
+		so.forcewrite = true;
+		const writeRuleSets = so.write;
+		so.write = function(section_id, value) {
+			return writeRuleSets.call(this, section_id,
+				hp.sortRuleSetValues(value, hp.simple_rule_sets));
+		};
 
 		so = ss.option(form.DynamicList, 'rule_set_urls', _('Custom rule sets'),
 			_('A full .srs URL, or an identifier such as geosite/netflix. A bare name is treated as a geosite rule set. For custom URLs, include /geosite/ in the path to enable DNS routing; GeoIP sets are only used for data routing.'));

@@ -173,6 +173,33 @@ return baseclass.extend({
 		'https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo': _('GitHub raw')
 	},
 
+	/* Normalize the order of a selected rule set list before it is written to
+	 * UCI. Known sets follow the order of the dropdown (passed as `order`),
+	 * any leftover value is sorted alphabetically at the end. Pass no `order`
+	 * for a plain alphabetical sort. The widget itself is left untouched, so
+	 * newly picked items still appear at the bottom until the form is saved. */
+	sortRuleSetValues: function(values, order) {
+		if (!Array.isArray(values))
+			return values;
+
+		let rank = Object.create(null), i = 0;
+		for (let key in order || {})
+			rank[key] = i++;
+
+		return values.slice().sort((a, b) => {
+			let ra = rank[a], rb = rank[b];
+
+			if (ra != null && rb != null)
+				return ra - rb;
+			if (ra != null)
+				return -1;
+			if (rb != null)
+				return 1;
+
+			return (a < b) ? -1 : (a > b) ? 1 : 0;
+		});
+	},
+
 	shadowsocks_encrypt_length: {
 		/* AEAD */
 		'aes-128-gcm': 0,
